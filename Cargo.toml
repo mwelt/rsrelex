@@ -1,0 +1,9 @@
+[package]
+name = "rsrelex"
+version = "0.1.0"
+authors = ["mwelt <michael.welt@ubmw.de>"]
+edition = "2018"
+
+[dependencies]
+unicode-segmentation = "1.6.0"
+quick-xml = "0.17.2"
