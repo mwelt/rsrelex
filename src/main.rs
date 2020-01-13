@@ -7,17 +7,20 @@ use quick_xml::events::Event;
 type SentenceId = u32;
 type WordNr = u32;
 
+// consider Option instead of an artificial 'null'
+const EMPTY_WORD: u32 = std::u32::MAX;
+    
 struct WPair {
     w1: WordNr,
     w2: WordNr,
-    confidence: u8
+    confidence: i16
 }
 
 impl WPair {
     fn new(w1: WordNr, w2: WordNr) -> WPair {
         WPair {
            w1, w2,
-           confidence: 0u8 
+           confidence: 0i16 
         }
     }
 
@@ -27,6 +30,23 @@ impl WPair {
         let w2 = env.dict.get(w2).expect("w2 not found in dict.");
 
         WPair::new(*w1, *w2)
+    }
+}
+
+struct Pattern {
+    prefix: WordNr,
+    infix: Vec<WordNr>,
+    suffix: WordNr,
+    order: bool,
+    confidence: i16
+}
+
+impl Pattern {
+    fn new(prefix: WordNr, infix: Vec<WordNr>, suffix: WordNr, order: bool) -> Pattern {
+        Pattern {
+            prefix, infix, suffix, order,
+            confidence: 9i16
+        }
     }
 }
 
@@ -137,42 +157,130 @@ fn read_xml_file(file_name: &str, env: &mut Env){
     println!("done reading file.");
 }
 
-fn find_matches(wpair: &mut WPair, env: &Env) -> HashSet<SentenceId>{
+fn find_matches(wpair: &WPair, env: &Env) -> HashSet<SentenceId>{
     let idx_w1 = env.inverted_idx.get(&wpair.w1).expect("w1 not found in inverted index");
-    let idx_w2 = env.inverted_idx.get(&wpair.w2).expect("w1 not found in inverted index");
+    let idx_w2 = env.inverted_idx.get(&wpair.w2).expect("w2 not found in inverted index");
 
     idx_w1.intersection(&idx_w2)
         .map(|s_id| *s_id)
         .collect::<HashSet<SentenceId>>()
 }
 
+fn extract_pattern(wpair: &WPair, sent: &Vec<WordNr>) -> Pattern {
+
+    let mut idx1 = std::usize::MAX;
+    let mut idx2 = std::usize::MAX;
+    for (i, w) in sent.iter().enumerate() {
+        if *w == wpair.w1 {
+            idx1 = i;
+        } else if *w == wpair.w2 {
+            idx2 = i;
+        }
+    }
+
+    if idx1 == std::usize::MAX && idx2 == std::usize::MAX {
+        panic!("Either w1 {} or w2 {} not found in {:?}", wpair.w1, wpair.w2, sent);
+    }
+
+    let (idx1, idx2, order) = if idx1 < idx2 {
+        (idx1, idx2, true)
+    } else {
+        (idx2, idx1, false)
+    };
+
+    let prefix = if idx1 == 0 { EMPTY_WORD } else { sent[idx1 - 1] };
+
+    let suffix = if idx2 < sent.len() - 1 {
+        sent[idx2 + 1]
+    } else { EMPTY_WORD }; 
+
+    Pattern::new(prefix, sent[idx1 + 1..idx2].to_vec(), suffix, order)
+
+}
+
+fn translate <'a> (sent: &Vec<WordNr>, env: &'a Env) -> Vec<&'a String>{
+    sent.iter().map(|word_nr| &env.dict_vec[*word_nr as usize]).collect()
+}
 
 
 fn main() {
 
     let mut env = Env::new();
 
-    // let file_name = "data2/pubmed19n0587.xml"; //"data2/pubmed19n0902.xml";
-    let file_name = "data2/pubmed19n0902.xml";
+    let file_names = vec![
+        "data2/pubmed19n0094.xml",
+        "data2/pubmed19n0162.xml",
+        "data2/pubmed19n0271.xml",
+        "data2/pubmed19n0281.xml",
+        "data2/pubmed19n0587.xml",
+        "data2/pubmed19n0902.xml"
+    ];
 
-    read_xml_file(file_name, &mut env);
+    // let file_name = "data2/pubmed19n0587.xml"; //"data2/pubmed19n0902.xml";
+    // let file_name = "data2/pubmed19n0902.xml";
+
+    for file_name in file_names {
+        read_xml_file(file_name, &mut env);
+    }
 
     println!("size of sentences vec {}", env.sentences.len()); 
     println!("size of dict_vec {}", env.dict_vec.len()); 
 
-    // println!("{:?}", sentences_orig[0]); 
-    // println!("{:?}", sentences_translated[0]); 
-    // println!("{:?}", sentences_translated[0].iter()
-    //          .map(|word_nr| &dict_vec[*word_nr as usize])
-    //          .collect::<Vec<&String>>());
+    let wpairs = vec![
+        WPair::new_str("organs", "liver", &env),
+        WPair::new_str("organs", "lung", &env),
+        WPair::new_str("bacteria", "Staphylococcus", &env),
+        WPair::new_str("bacteria", "Streptococcus", &env),
+        WPair::new_str("organs", "esophagus", &env)
+    ];
 
-    let sentences_with_and = env.dict.get("cancer")
-        .and_then(|word_nr| env.inverted_idx.get(word_nr))
-        .expect("No entry for word \"cancer\" found in dict or in inverted index.");
+    let wpair_on_sentence_ids: Vec<(&WPair, HashSet<SentenceId>)> =
+        wpairs.iter()
+        .zip(wpairs.iter()
+             .map(|wpair| find_matches(wpair, &env)))
+        .collect(); 
 
-    println!("count sentences with word \"cancer\" {}", sentences_with_and.len());
+    let wpair_on_patterns: Vec<(&WPair, Vec<Pattern>)> =
+        wpair_on_sentence_ids.iter()
+        .map(|(wpair, s_ids)| {
+            let patterns = s_ids.iter()
+                .map(|s_id| {
+                    let sent = &env.sentences[*s_id as usize];
+                    extract_pattern(wpair, sent)
+                }).collect::<Vec<Pattern>>();
+            (*wpair, patterns)
+        })
+        .collect();
 
-    // println!("2nd of txt vec {:?}", txt[1]); 
-    // println!("2nd of txt vec {:?}", txt[3]); 
-    // println!("last of txt vec {:?}", txt[txt.len() - 1]);
+    
+    
+    for (wpair, patterns) in wpair_on_patterns {
+        println!("patterns for wpair: (\"{}\", \"{}\") {}",
+                 &env.dict_vec[wpair.w1 as usize],
+                 &env.dict_vec[wpair.w2 as usize],
+                 patterns.len());
+
+        
+        // for pattern in patterns {
+        //     println!("prefix: {}, infix: {:?}, suffix: {}, order: {}",
+        //              if pattern.prefix == EMPTY_WORD { "empty" } else { &env.dict_vec[pattern.prefix as usize] },
+        //              {pattern.infix.iter().map(|word_nr| &env.dict_vec[*word_nr as usize]).collect::<Vec<&String>>()},
+        //              if pattern.suffix == EMPTY_WORD { "empty" } else { &env.dict_vec[pattern.suffix as usize] },
+        //              pattern.order);
+        // }
+    }
+
+    // for (wpair, s_ids) in wpair_on_sentence_ids {
+
+    //     println!("sentences for wpair: (\"{}\", \"{}\")",
+    //              &env.dict_vec[wpair.w1 as usize],
+    //              &env.dict_vec[wpair.w2 as usize]);
+
+    //     for s_id in s_ids {
+    //         let sent = &env.sentences[s_id as usize];
+    //         println!("{:?}", translate(sent, &env));
+    //     }
+
+    // }
+
 }
