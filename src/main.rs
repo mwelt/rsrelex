@@ -202,22 +202,38 @@ fn translate <'a> (sent: &Vec<WordNr>, env: &'a Env) -> Vec<&'a String>{
     sent.iter().map(|word_nr| &env.dict_vec[*word_nr as usize]).collect()
 }
 
-
 fn main() {
 
     let mut env = Env::new();
 
     let file_names = vec![
-        "data2/pubmed19n0094.xml",
-        "data2/pubmed19n0162.xml",
-        "data2/pubmed19n0271.xml",
-        "data2/pubmed19n0281.xml",
-        "data2/pubmed19n0587.xml",
-        "data2/pubmed19n0902.xml"
+        // "data/pubmed19n0094.xml",
+        // "data/pubmed19n0281.xml",
+        // "data/pubmed19n0416.xml",
+        // "data/pubmed19n0587.xml",
+        // "data/pubmed19n0635.xml",
+        // "data/pubmed19n0839.xml",
+        // "data/pubmed19n0902.xml",
+        // "data/pubmed19n0162.xml",
+        // "data/pubmed19n0304.xml",
+        // "data/pubmed19n0464.xml",
+        // "data/pubmed19n0599.xml",
+        // "data/pubmed19n0637.xml",
+        // "data/pubmed19n0868.xml",
+        // "data/pubmed19n0955.xml",
+        // "data/pubmed19n0271.xml",
+        // "data/pubmed19n0389.xml",
+        // "data/pubmed19n0568.xml",
+        // "data/pubmed19n0604.xml",
+        // "data/pubmed19n0823.xml",
+        "data/pubmed19n0879.xml", //--
+        // "data2/pubmed19n0094.xml",
+        // "data2/pubmed19n0162.xml",
+        // "data2/pubmed19n0271.xml",
+        // "data2/pubmed19n0281.xml",
+        // "data2/pubmed19n0587.xml",
+        // "data2/pubmed19n0902.xml"
     ];
-
-    // let file_name = "data2/pubmed19n0587.xml"; //"data2/pubmed19n0902.xml";
-    // let file_name = "data2/pubmed19n0902.xml";
 
     for file_name in file_names {
         read_xml_file(file_name, &mut env);
@@ -232,27 +248,26 @@ fn main() {
         WPair::new_str("bacteria", "Staphylococcus", &env),
         WPair::new_str("bacteria", "Streptococcus", &env),
         WPair::new_str("organs", "esophagus", &env)
+        // WPair::new_str("cancer", "BRCA1", &env),
+        // WPair::new_str("cancer", "UV", &env),
+        // WPair::new_str("cancer", "ultraviolet", &env),
+        // WPair::new_str("cancer", "alcohol", &env),
+        // WPair::new_str("cancer", "tobacco", &env),
     ];
 
-    let wpair_on_sentence_ids: Vec<(&WPair, HashSet<SentenceId>)> =
-        wpairs.iter()
-        .zip(wpairs.iter()
-             .map(|wpair| find_matches(wpair, &env)))
-        .collect(); 
-
     let wpair_on_patterns: Vec<(&WPair, Vec<Pattern>)> =
-        wpair_on_sentence_ids.iter()
-        .map(|(wpair, s_ids)| {
-            let patterns = s_ids.iter()
+        wpairs.iter()
+        .map(|wpair| {
+            let sentence_ids = find_matches(wpair, &env);
+            
+            let patterns = sentence_ids.iter()
                 .map(|s_id| {
                     let sent = &env.sentences[*s_id as usize];
                     extract_pattern(wpair, sent)
                 }).collect::<Vec<Pattern>>();
-            (*wpair, patterns)
-        })
-        .collect();
 
-    
+            (wpair, patterns)
+        }).collect(); 
     
     for (wpair, patterns) in wpair_on_patterns {
         println!("patterns for wpair: (\"{}\", \"{}\") {}",
