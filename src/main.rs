@@ -7,47 +7,78 @@ use quick_xml::events::Event;
 type SentenceId = u32;
 type WordNr = u32;
 
-fn main() {
+struct WPair {
+    w1: WordNr,
+    w2: WordNr,
+    confidence: u8
+}
 
-    // let file_name = "data2/pubmed19n0587.xml"; //"data2/pubmed19n0902.xml";
-    let file_name = "data2/pubmed19n0902.xml";
+impl WPair {
+    fn new(w1: WordNr, w2: WordNr) -> WPair {
+        WPair {
+           w1, w2,
+           confidence: 0u8 
+        }
+    }
+
+    fn new_str(w1: &str, w2: &str, env: &Env) -> WPair {
+
+        let w1 = env.dict.get(w1).expect("w1 not found in dict.");
+        let w2 = env.dict.get(w2).expect("w2 not found in dict.");
+
+        WPair::new(*w1, *w2)
+    }
+}
+
+struct Env {
+    dict_vec: Vec<String>,
+    dict: HashMap<String, WordNr>,
+    inverted_idx: HashMap<WordNr, HashSet<SentenceId>>,
+    sentences: Vec<Vec<WordNr>>,
+    pairs: Vec<WPair>
+}
+
+impl Env {
+    fn new() -> Env {
+        Env {
+            dict_vec: Vec::new(),
+            dict: HashMap::new(),
+            inverted_idx: HashMap::new(),
+            sentences: Vec::new(), 
+            pairs: Vec::new() 
+        }
+    }
+
+    fn add_word(&mut self, w: &str) -> WordNr {
+        if self.dict.contains_key(w) {
+            return self.dict[w];
+        } else {
+            let i = self.dict_vec.len() as WordNr; 
+
+            //TODO rly two copies needed?
+            self.dict_vec.push(w.to_owned());
+            self.dict.insert(w.to_owned(), i);
+            return i;
+        }
+    }
+
+    fn add_inv_idx(&mut self, w: WordNr, s_id: SentenceId) {
+        self.inverted_idx.entry(w)
+            .or_insert(HashSet::new())
+            .insert(s_id);
+    }
+
+}
+    
+    
+fn read_xml_file(file_name: &str, env: &mut Env){
 
     let mut reader = Reader::from_file(file_name)
         .expect("Could not read from input file.");
 
     let mut buf = Vec::new();
 
-    let mut dict_vec: Vec<String> = Vec::new();
-    let mut dict: HashMap<String, WordNr> = HashMap::new();
-
-    let mut sentences_orig: Vec<Vec<String>> = Vec::new();
-    let mut sentences_translated: Vec<Vec<WordNr>> = Vec::new();
-
-    let mut add_word = |w: &String| -> WordNr {
-        if dict.contains_key(w) {
-            return dict[w];
-        } else {
-            let i = dict_vec.len() as WordNr; 
-            dict_vec.push(w.to_owned());
-            dict.insert(w.to_owned(), i);
-            return i;
-        }
-    };
-
-    let mut count_sentence_id = 0u32;
-    let mut inverted_idx: HashMap<WordNr, HashSet<SentenceId>> = HashMap::new();
-    
-    let mut add_inv_idx = |w: WordNr, s_id: SentenceId| {
-        inverted_idx.entry(w)
-            .or_insert(HashSet::new())
-            .insert(s_id);
-    };
-    
     let mut read: bool = false;
-
-    // let mut count_open: u32 = 0;
-    // let mut count_end: u32 = 0;
-    // let mut count_add: u32 = 0;
 
     println!("Starting reading file {}", file_name);
 
@@ -57,7 +88,6 @@ fn main() {
             Ok(Event::Start(ref e)) => {
                 match e.name() {
                     b"AbstractText" => {
-                        // count_open += 1;
                         read = true;
                     }, 
                     _ => (),
@@ -67,7 +97,6 @@ fn main() {
             Ok(Event::End(ref e)) => {
                 match e.name() {
                     b"AbstractText" => {
-                        // count_end += 1;
                         read = false;
                     }, 
                     _ => (),
@@ -75,37 +104,26 @@ fn main() {
             }
            
             Ok(Event::Text(ref e)) if read => {
-                // count_add += 1;
+
                 let s: String = e.unescape_and_decode(&reader)
                    .expect("Error while reading text from xml.");
-
-                let sentences = s.unicode_sentences();
                 
-                let mut sentences = sentences
+                let mut sentences = s.unicode_sentences()
                     .map(|sent| sent
                          .split_word_bounds()
                          .filter(|word| *word != " ")
-                         .map(|word| word.to_owned())
-                         .collect::<Vec<String>>())
-                    .collect::<Vec<Vec<String>>>();
-
-                let mut sentences_translated_ = sentences.iter()
-                    .map(|sent| sent.iter()
-                         .map(|word| add_word(&word))
+                         .map(|word| env.add_word(word))
                          .collect::<Vec<u32>>())
                     .collect::<Vec<Vec<u32>>>();
 
-                for (i, sent) in sentences_translated_.iter().enumerate() {
-                    let sentence_id: SentenceId = i as u32 + count_sentence_id; 
+                for (i, sent) in sentences.iter().enumerate() {
+                    let sentence_id: SentenceId = (i + env.sentences.len()) as u32; 
                     for word in sent {
-                        add_inv_idx(*word, sentence_id);
+                        env.add_inv_idx(*word, sentence_id);
                     }
                 }
 
-                count_sentence_id += sentences_translated.len() as u32;
-
-                sentences_orig.append(&mut sentences);
-                sentences_translated.append(&mut sentences_translated_);
+                env.sentences.append(&mut sentences);
             },
 
             Err(e) => panic!(
@@ -115,14 +133,32 @@ fn main() {
         }
         buf.clear();
     }
-    
-    println!("done reading file.");
-    // println!("encountered {} AbtractText open tags", count_open);
-    // println!("encountered {} AbtractText end tags", count_end);
-    // println!("added text {} times", count_add);
 
-    println!("size of sentences vec {}", sentences_translated.len()); 
-    println!("size of dict_vec {}", dict_vec.len()); 
+    println!("done reading file.");
+}
+
+fn find_matches(wpair: &mut WPair, env: &Env) -> HashSet<SentenceId>{
+    let idx_w1 = env.inverted_idx.get(&wpair.w1).expect("w1 not found in inverted index");
+    let idx_w2 = env.inverted_idx.get(&wpair.w2).expect("w1 not found in inverted index");
+
+    idx_w1.intersection(&idx_w2)
+        .map(|s_id| *s_id)
+        .collect::<HashSet<SentenceId>>()
+}
+
+
+
+fn main() {
+
+    let mut env = Env::new();
+
+    // let file_name = "data2/pubmed19n0587.xml"; //"data2/pubmed19n0902.xml";
+    let file_name = "data2/pubmed19n0902.xml";
+
+    read_xml_file(file_name, &mut env);
+
+    println!("size of sentences vec {}", env.sentences.len()); 
+    println!("size of dict_vec {}", env.dict_vec.len()); 
 
     // println!("{:?}", sentences_orig[0]); 
     // println!("{:?}", sentences_translated[0]); 
@@ -130,9 +166,9 @@ fn main() {
     //          .map(|word_nr| &dict_vec[*word_nr as usize])
     //          .collect::<Vec<&String>>());
 
-    let sentences_with_and = dict.get("cancer")
-        .and_then(|word_nr| inverted_idx.get(word_nr))
-        .expect("No entry for word \"and\" found in dict or in inverted index.");
+    let sentences_with_and = env.dict.get("cancer")
+        .and_then(|word_nr| env.inverted_idx.get(word_nr))
+        .expect("No entry for word \"cancer\" found in dict or in inverted index.");
 
     println!("count sentences with word \"cancer\" {}", sentences_with_and.len());
 
