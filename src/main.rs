@@ -1,3 +1,5 @@
+use std::env;
+use std::fs;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use unicode_segmentation::UnicodeSegmentation;
@@ -9,18 +11,29 @@ type WordNr = u32;
 
 // consider Option instead of an artificial 'null'
 const EMPTY_WORD: u32 = std::u32::MAX;
-    
+
+// pattern was found for one or more wpairs 
+const PATTERN_WPAIR_BOOST: i16 = 10;
+// pattern (infix) was found one or more times
+const PATTERN_PATTERN_BOOST: i16 = -2;
+// pattern is to short MALUS
+const PATTERN_SHORT_SIZED_BOOST: i16 = -40;
+// pattern is medium sized
+const PATTERN_MEDIUM_SIZED_BOOST: i16 = 0;
+// pattern is to long MALUS
+const PATTERN_LONG_SIZED_BOOST: i16 = -40;
+
 struct WPair {
     w1: WordNr,
     w2: WordNr,
-    confidence: i16
+    _fitness: i16
 }
 
 impl WPair {
     fn new(w1: WordNr, w2: WordNr) -> WPair {
         WPair {
            w1, w2,
-           confidence: 0i16 
+           _fitness: 0i16 
         }
     }
 
@@ -31,6 +44,14 @@ impl WPair {
 
         WPair::new(*w1, *w2)
     }
+
+    fn println(&self, env: &Env) {
+
+        println!("fitness: {}, w1: {}, w2: {}",
+                 self._fitness,
+                 if self.w1 == EMPTY_WORD { "empty" } else { &env.dict_vec[self.w1 as usize] },
+                 if self.w2 == EMPTY_WORD { "empty" } else { &env.dict_vec[self.w2 as usize] });
+    }
 }
 
 struct Pattern {
@@ -38,15 +59,37 @@ struct Pattern {
     infix: Vec<WordNr>,
     suffix: WordNr,
     order: bool,
-    confidence: i16
+    fitness: i16
+}
+
+impl Clone for Pattern {
+    fn clone(&self) -> Pattern {
+        Pattern {
+            prefix: self.prefix,
+            infix: self.infix.clone(),
+            suffix: self.suffix,
+            order: self.order,
+            fitness: self.fitness
+        }
+    }
 }
 
 impl Pattern {
     fn new(prefix: WordNr, infix: Vec<WordNr>, suffix: WordNr, order: bool) -> Pattern {
         Pattern {
             prefix, infix, suffix, order,
-            confidence: 9i16
+            fitness: 9i16
         }
+    }
+
+    fn println(&self, env: &Env) {
+
+        println!("fitness: {}, prefix: {}, infix: {:?}, suffix: {}, order: {}",
+                 self.fitness,
+                 if self.prefix == EMPTY_WORD { "empty" } else { &env.dict_vec[self.prefix as usize] },
+                 {self.infix.iter().map(|word_nr| &env.dict_vec[*word_nr as usize]).collect::<Vec<&String>>()},
+                 if self.suffix == EMPTY_WORD { "empty" } else { &env.dict_vec[self.suffix as usize] },
+                 self.order);
     }
 }
 
@@ -55,7 +98,7 @@ struct Env {
     dict: HashMap<String, WordNr>,
     inverted_idx: HashMap<WordNr, HashSet<SentenceId>>,
     sentences: Vec<Vec<WordNr>>,
-    pairs: Vec<WPair>
+    _pairs: Vec<WPair>
 }
 
 impl Env {
@@ -65,7 +108,7 @@ impl Env {
             dict: HashMap::new(),
             inverted_idx: HashMap::new(),
             sentences: Vec::new(), 
-            pairs: Vec::new() 
+            _pairs: Vec::new() 
         }
     }
 
@@ -100,7 +143,7 @@ fn read_xml_file(file_name: &str, env: &mut Env){
 
     let mut read: bool = false;
 
-    println!("Starting reading file {}", file_name);
+    println!("Start reading file {}", file_name);
 
     loop {
         match reader.read_event(&mut buf) {
@@ -157,13 +200,112 @@ fn read_xml_file(file_name: &str, env: &mut Env){
     println!("done reading file.");
 }
 
-fn find_matches(wpair: &WPair, env: &Env) -> HashSet<SentenceId>{
+fn find_matches_wpair(wpair: &WPair, env: &Env) -> HashSet<SentenceId>{
     let idx_w1 = env.inverted_idx.get(&wpair.w1).expect("w1 not found in inverted index");
     let idx_w2 = env.inverted_idx.get(&wpair.w2).expect("w2 not found in inverted index");
 
     idx_w1.intersection(&idx_w2)
         .map(|s_id| *s_id)
         .collect::<HashSet<SentenceId>>()
+}
+
+// fn find_matches_pattern <'a> (pattern: &Pattern, env: &'a Env) -> Vec<& 'a Vec<WordNr>> {
+fn find_matches_pattern(pattern: &Pattern, env: &Env) -> Vec<WPair> {
+
+    let l = pattern.infix.len();
+    
+    // for empty infixes don't do anything
+    if l < 1 {
+        return Vec::new();
+    }
+
+    // a very naive approach just combines all inverted indizes
+    // to reduce search space by intersecting single infix words
+
+    // another approach would be more memory intense, by not only
+    // storing sentence_id for every word occurrence but also store
+    // position in sentence. With that we could find matching sentences
+    // without even look at a single sentence, just by comparing
+    // occurrence position - problem multiple occurrences in single sent. 
+
+    
+    // take sentence_ids for first word of infix
+    let sentence_ids_infix_pos_0 = env.inverted_idx.get(&pattern.infix[0])
+        .expect("infix word not found in inverted index");
+
+    let mut sentence_ids: HashSet<SentenceId> = sentence_ids_infix_pos_0.to_owned();
+
+    for i in 1..l {
+        let sentence_ids_infix_pos_i = env.inverted_idx.get(&pattern.infix[i])
+            .expect("infix word not found in inverted index");
+
+        sentence_ids = sentence_ids.intersection(sentence_ids_infix_pos_i)
+            .map(|s_id| *s_id)
+            .collect::<HashSet<SentenceId>>(); 
+    }
+
+    // now search every sentence for the first infix word and look 
+    // the next infix.len() - 2 words.
+
+    sentence_ids.iter()
+        .map(|s_id| {
+            let sent = &env.sentences[*s_id as usize];
+            let mut infix_pos_0_idx = std::usize::MAX;
+
+            for (i, word) in sent.iter().enumerate() {
+                if *word == pattern.infix[0] {
+                    infix_pos_0_idx = i; 
+                    break;
+                }
+            }
+
+            if infix_pos_0_idx == std::usize::MAX {
+                panic!("find_matches_pattern: Could not find word {} in {:?}.",
+                       pattern.infix[0], sent);
+            }
+
+            (infix_pos_0_idx, sent)
+
+        })
+        .filter(|(infix_pos_0_idx, sent)| {
+
+            for i in 1..pattern.infix.len() {
+                let p = infix_pos_0_idx + i;
+                if sent.len() == p || sent[p] != pattern.infix[i] {
+                    return false;
+                }
+            }
+
+            true
+            
+        })
+        .map(|(infix_pos_0_idx, sent)| {
+            let w1 = if infix_pos_0_idx == 0 {
+                EMPTY_WORD
+            } else {
+                sent[infix_pos_0_idx - 1]
+            };
+
+            let idx2 = infix_pos_0_idx + pattern.infix.len();
+            let w2 = if idx2 == sent.len() {
+                EMPTY_WORD
+            } else {
+                sent[idx2]
+            };
+
+            if pattern.order {
+                WPair::new(w1, w2)
+            } else {
+                WPair::new(w2, w1)
+            }
+        })
+        .filter(|WPair {w1, w2, _fitness}|
+                if *w1 == EMPTY_WORD || *w2 == EMPTY_WORD {
+                    false
+                } else {
+                    true
+                })
+        .collect()
 }
 
 fn extract_pattern(wpair: &WPair, sent: &Vec<WordNr>) -> Pattern {
@@ -198,49 +340,43 @@ fn extract_pattern(wpair: &WPair, sent: &Vec<WordNr>) -> Pattern {
 
 }
 
-fn translate <'a> (sent: &Vec<WordNr>, env: &'a Env) -> Vec<&'a String>{
+fn _translate <'a> (sent: &Vec<WordNr>, env: &'a Env) -> Vec<&'a String>{
     sent.iter().map(|word_nr| &env.dict_vec[*word_nr as usize]).collect()
 }
 
+fn file_names_from_directory(dir: &str) -> std::io::Result<Vec<String>> {
+    let mut r = Vec::new();
+    for elem in fs::read_dir(dir)? {
+        let p = elem?.path();
+        if ! p.is_dir() {
+            r.push(p.to_str().unwrap().to_owned());
+        }
+    }
+    Ok(r)
+}
+
+
 fn main() {
 
+    println!("starting.");
     let mut env = Env::new();
 
-    let file_names = vec![
-        // "data/pubmed19n0094.xml",
-        // "data/pubmed19n0281.xml",
-        // "data/pubmed19n0416.xml",
-        // "data/pubmed19n0587.xml",
-        // "data/pubmed19n0635.xml",
-        // "data/pubmed19n0839.xml",
-        // "data/pubmed19n0902.xml",
-        // "data/pubmed19n0162.xml",
-        // "data/pubmed19n0304.xml",
-        // "data/pubmed19n0464.xml",
-        // "data/pubmed19n0599.xml",
-        // "data/pubmed19n0637.xml",
-        // "data/pubmed19n0868.xml",
-        // "data/pubmed19n0955.xml",
-        // "data/pubmed19n0271.xml",
-        // "data/pubmed19n0389.xml",
-        // "data/pubmed19n0568.xml",
-        // "data/pubmed19n0604.xml",
-        // "data/pubmed19n0823.xml",
-        "data/pubmed19n0879.xml", //--
-        // "data2/pubmed19n0094.xml",
-        // "data2/pubmed19n0162.xml",
-        // "data2/pubmed19n0271.xml",
-        // "data2/pubmed19n0281.xml",
-        // "data2/pubmed19n0587.xml",
-        // "data2/pubmed19n0902.xml"
-    ];
-
-    for file_name in file_names {
-        read_xml_file(file_name, &mut env);
+    let args: Vec<String> = env::args().collect(); 
+    if args.len() < 1 {
+        panic!("please provide xml directory as parameter.");
     }
 
-    println!("size of sentences vec {}", env.sentences.len()); 
-    println!("size of dict_vec {}", env.dict_vec.len()); 
+    println!("reading files from directory {}.", &args[1]);
+    for file_name in file_names_from_directory(&args[1])
+        .expect("could not read input directory.") {
+
+        read_xml_file(&file_name, &mut env);
+    }
+
+    println!("done reading files from directory.");
+
+    println!("{} sentences loaded, with {} distinct words."
+             , env.sentences.len(), env.dict_vec.len()); 
 
     let wpairs = vec![
         WPair::new_str("organs", "liver", &env),
@@ -255,10 +391,11 @@ fn main() {
         // WPair::new_str("cancer", "tobacco", &env),
     ];
 
+    println!("finding matches for input {} wpairs.", wpairs.len());
     let wpair_on_patterns: Vec<(&WPair, Vec<Pattern>)> =
         wpairs.iter()
         .map(|wpair| {
-            let sentence_ids = find_matches(wpair, &env);
+            let sentence_ids = find_matches_wpair(wpair, &env);
             
             let patterns = sentence_ids.iter()
                 .map(|s_id| {
@@ -268,22 +405,100 @@ fn main() {
 
             (wpair, patterns)
         }).collect(); 
+    println!("done finding matches for input wpairs.");
     
-    for (wpair, patterns) in wpair_on_patterns {
-        println!("patterns for wpair: (\"{}\", \"{}\") {}",
-                 &env.dict_vec[wpair.w1 as usize],
-                 &env.dict_vec[wpair.w2 as usize],
-                 patterns.len());
+    println!("qualifying found matches to patterns.");
+    let mut pattern_cache: HashMap<Vec<WordNr>, Pattern> = HashMap::new();
+
+    let mut pattern_count = 0;
+    for (_wpair, patterns) in wpair_on_patterns {
+        for pattern in patterns {
+
+            pattern_count += 1;
+
+            // TODO could be possibly memory leak, since
+            // copy is created for every pattern, even if the
+            // reference pattern exists in the cache
+
+            let mut p_ = (&pattern).clone();
+
+            let mut p = pattern_cache.entry(pattern.infix)
+                .or_insert({
+                    let infix_len = p_.infix.len();
+                    if infix_len <= 1 {
+                        p_.fitness += PATTERN_SHORT_SIZED_BOOST;
+                    }
+                    if infix_len > 1 && infix_len < 5 {
+                        p_.fitness += PATTERN_MEDIUM_SIZED_BOOST;
+                    }
+                    if infix_len >= 5 {
+                        p_.fitness += PATTERN_LONG_SIZED_BOOST;
+                    }
+                    p_
+                });
+
+            if p.prefix != pattern.prefix {
+                p.prefix = EMPTY_WORD;
+            }
+
+            if p.suffix != pattern.suffix {
+                p.suffix = EMPTY_WORD;
+            }
+
+            // boost for every wpair the pattern occured
+            // -> intuition: pattern is able to identify a
+            // more general range of wpairs - thus more suited
+            // to the underlying relation.
+            p.fitness += PATTERN_WPAIR_BOOST;
+
+            // boost for every time the pattern / infix
+            // was found -> intuition: pattern is quite,
+            // often seen. Could indicate that
+            // pattern is overly general - minor malus.
+            p.fitness += PATTERN_PATTERN_BOOST;
+                
+        }
+    }
+    println!("done qualifying found matches to patterns."); 
+    println!("pattern count: {}", pattern_count);
+
+    let mut patterns: Vec<&Pattern> = pattern_cache.values().collect();
+
+    println!("sorting patterns by fitness.");
+    patterns.sort_unstable_by(
+        |a, b| i16::cmp(&a.fitness, &b.fitness).reverse());
+    println!("done sorting patterns by fitness.");
+
+    println!("Top 10 final patterns with extracted wpairs:");
+    for pattern in patterns.iter().take(10) {
+        pattern.println(&env);
+
+        let wpairs = find_matches_pattern(&pattern, &env);
+
+        for wpair in wpairs.iter().take(10) {
+            wpair.println(&env);
+        }
+
+    }
+    
+
+    
+    
+    // for (wpair, patterns) in wpair_on_patterns {
+    //     println!("patterns for wpair: (\"{}\", \"{}\") {}",
+    //              &env.dict_vec[wpair.w1 as usize],
+    //              &env.dict_vec[wpair.w2 as usize],
+    //              patterns.len());
 
         
-        // for pattern in patterns {
-        //     println!("prefix: {}, infix: {:?}, suffix: {}, order: {}",
-        //              if pattern.prefix == EMPTY_WORD { "empty" } else { &env.dict_vec[pattern.prefix as usize] },
-        //              {pattern.infix.iter().map(|word_nr| &env.dict_vec[*word_nr as usize]).collect::<Vec<&String>>()},
-        //              if pattern.suffix == EMPTY_WORD { "empty" } else { &env.dict_vec[pattern.suffix as usize] },
-        //              pattern.order);
-        // }
-    }
+    //     // for pattern in patterns {
+    //     //     println!("prefix: {}, infix: {:?}, suffix: {}, order: {}",
+    //     //              if pattern.prefix == EMPTY_WORD { "empty" } else { &env.dict_vec[pattern.prefix as usize] },
+    //     //              {pattern.infix.iter().map(|word_nr| &env.dict_vec[*word_nr as usize]).collect::<Vec<&String>>()},
+    //     //              if pattern.suffix == EMPTY_WORD { "empty" } else { &env.dict_vec[pattern.suffix as usize] },
+    //     //              pattern.order);
+    //     // }
+    // }
 
     // for (wpair, s_ids) in wpair_on_sentence_ids {
 
