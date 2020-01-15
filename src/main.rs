@@ -23,17 +23,38 @@ const PATTERN_MEDIUM_SIZED_BOOST: i16 = 0;
 // pattern is to long MALUS
 const PATTERN_LONG_SIZED_BOOST: i16 = -40;
 
+const PATTERN_SURVIVOR_THRESHOLD: i16 = 20;
+
+const WPAIR_SURVIVOR_THRESHOLD: i16 = 20;
+
+// word appears frequently in the global corpus
+// needs to be dependent on the size of the corpus
+const WPAIR_WORD_GLOBAL_FREQUENCY_BOOST_PER_SENTENCE: f32 = -0.1; 
+
+// wpair is identified over various patterns
+const WPAIR_PATTERN_BOOST: i16 = 10;
+
 struct WPair {
     w1: WordNr,
     w2: WordNr,
-    _fitness: i16
+    fitness: i16
+}
+
+impl Clone for WPair {
+    fn clone(&self) -> WPair {
+        WPair {
+            w1: self.w1,
+            w2: self.w2,
+            fitness: self.fitness
+        }
+    }
 }
 
 impl WPair {
     fn new(w1: WordNr, w2: WordNr) -> WPair {
         WPair {
            w1, w2,
-           _fitness: 0i16 
+           fitness: 0i16 
         }
     }
 
@@ -48,7 +69,7 @@ impl WPair {
     fn println(&self, env: &Env) {
 
         println!("fitness: {}, w1: {}, w2: {}",
-                 self._fitness,
+                 self.fitness,
                  if self.w1 == EMPTY_WORD { "empty" } else { &env.dict_vec[self.w1 as usize] },
                  if self.w2 == EMPTY_WORD { "empty" } else { &env.dict_vec[self.w2 as usize] });
     }
@@ -82,7 +103,7 @@ impl Pattern {
         }
     }
 
-    fn println(&self, env: &Env) {
+    fn _println(&self, env: &Env) {
 
         println!("fitness: {}, prefix: {}, infix: {:?}, suffix: {}, order: {}",
                  self.fitness,
@@ -98,7 +119,8 @@ struct Env {
     dict: HashMap<String, WordNr>,
     inverted_idx: HashMap<WordNr, HashSet<SentenceId>>,
     sentences: Vec<Vec<WordNr>>,
-    _pairs: Vec<WPair>
+    _pairs: Vec<WPair>,
+    the: WordNr
 }
 
 impl Env {
@@ -108,7 +130,8 @@ impl Env {
             dict: HashMap::new(),
             inverted_idx: HashMap::new(),
             sentences: Vec::new(), 
-            _pairs: Vec::new() 
+            _pairs: Vec::new(), 
+            the: EMPTY_WORD
         }
     }
 
@@ -290,7 +313,18 @@ fn find_matches_pattern(pattern: &Pattern, env: &Env) -> Vec<WPair> {
             let w2 = if idx2 == sent.len() {
                 EMPTY_WORD
             } else {
-                sent[idx2]
+                // special case THE
+                if sent[idx2] == env.the {
+                    if idx2 + 1 == sent.len() {
+                        // there is "the" as the final word of a sentence?
+                        println!("Somthing strange in my neighbourhood! Call Ghost Busters!");
+                        EMPTY_WORD
+                    } else {
+                        sent[idx2 + 1]
+                    }
+                } else {
+                    sent[idx2]
+                }
             };
 
             if pattern.order {
@@ -299,7 +333,7 @@ fn find_matches_pattern(pattern: &Pattern, env: &Env) -> Vec<WPair> {
                 WPair::new(w2, w1)
             }
         })
-        .filter(|WPair {w1, w2, _fitness}|
+        .filter(|WPair {w1, w2, fitness: _}|
                 if *w1 == EMPTY_WORD || *w2 == EMPTY_WORD {
                     false
                 } else {
@@ -378,6 +412,9 @@ fn main() {
     println!("{} sentences loaded, with {} distinct words."
              , env.sentences.len(), env.dict_vec.len()); 
 
+    env.the = *env.dict.get("the")
+        .expect("\"the\" not found in dictionary.");
+
     let wpairs = vec![
         WPair::new_str("organs", "liver", &env),
         WPair::new_str("organs", "lung", &env),
@@ -412,6 +449,9 @@ fn main() {
 
     let mut pattern_count = 0;
     for (_wpair, patterns) in wpair_on_patterns {
+
+        let mut already_wpair_boosted: HashSet<Vec<WordNr>> = HashSet::new();
+
         for pattern in patterns {
 
             pattern_count += 1;
@@ -448,8 +488,14 @@ fn main() {
             // boost for every wpair the pattern occured
             // -> intuition: pattern is able to identify a
             // more general range of wpairs - thus more suited
-            // to the underlying relation.
-            p.fitness += PATTERN_WPAIR_BOOST;
+            // to the underlying relation. But boost only once
+            // per wpair!
+            if ! already_wpair_boosted.contains(&p.infix){
+                p.fitness += PATTERN_WPAIR_BOOST;
+                // TODO try to find solution with pointer
+                // this is time consuming mem copy
+                already_wpair_boosted.insert(p.infix.clone());
+            }
 
             // boost for every time the pattern / infix
             // was found -> intuition: pattern is quite,
@@ -462,55 +508,128 @@ fn main() {
     println!("done qualifying found matches to patterns."); 
     println!("pattern count: {}", pattern_count);
 
-    let mut patterns: Vec<&Pattern> = pattern_cache.values().collect();
+    let patterns: Vec<&Pattern> = pattern_cache.values()
+        .filter(|pattern| pattern.fitness >= PATTERN_SURVIVOR_THRESHOLD)
+        .collect();
+    println!("{} patterns left after applying threshold fitness of {}.",
+             patterns.len(), PATTERN_SURVIVOR_THRESHOLD);
 
-    println!("sorting patterns by fitness.");
-    patterns.sort_unstable_by(
-        |a, b| i16::cmp(&a.fitness, &b.fitness).reverse());
-    println!("done sorting patterns by fitness.");
+    println!("finding new wpairs for surviving patterns (fitness >= {}).",
+             PATTERN_SURVIVOR_THRESHOLD);
+   
+    let pattern_on_wpairs = patterns.iter()
+        .map(|pattern| {
+            let wpairs = find_matches_pattern(&pattern, &env);
+            (pattern, wpairs)
+        });
+    println!("done finding new wpairs for surviving patterns.");
 
-    println!("Top 10 final patterns with extracted wpairs:");
-    for pattern in patterns.iter().take(10) {
-        pattern.println(&env);
+    println!("qualifying found wpairs.");
+    let mut wpair_cache: HashMap<(WordNr, WordNr), WPair> = HashMap::new();
 
-        let wpairs = find_matches_pattern(&pattern, &env);
+    let wpair_word_frequency_boost =
+        WPAIR_WORD_GLOBAL_FREQUENCY_BOOST_PER_SENTENCE / env.sentences.len() as f32;  
 
-        for wpair in wpairs.iter().take(10) {
-            wpair.println(&env);
+    println!("wpair_word_frequency_boost = {}", wpair_word_frequency_boost);
+
+    let mut wpair_count = 0;
+
+    println!("qualifying found wpairs");
+    for (_pattern, wpairs) in pattern_on_wpairs {
+
+        let mut already_pattern_boosted: HashSet<(WordNr, WordNr)> = HashSet::new();
+
+        for wpair in wpairs {
+
+            wpair_count += 1;
+
+            let mut wp_ = wpair.clone();
+
+            let wp = wpair_cache.entry((wpair.w1, wpair.w2))
+                .or_insert({
+                    // maybe the most dificult part to boost is
+                    // the global term frequency. Intuition here
+                    // is that if a wpair contains a very frequent term
+                    // e.g. "the", then the resulting set of the inverted
+                    // index will be huge in size, and we'll be punishing
+                    // this in relation to the overall corpus size, since
+                    // this term seem to be overly general
+
+                    let calc_freq_boost = |w| {
+                        env.inverted_idx.get(w)
+                            .expect("w not found in inverted index")
+                            .len() as f32 * wpair_word_frequency_boost 
+                    };
+
+                    let w1_freq_boost = calc_freq_boost(&wp_.w1); 
+                    let w2_freq_boost = calc_freq_boost(&wp_.w2); 
+
+                    // this can get seriously wrong if the numbers outgrow
+                    // i16::MIN, but if this happens our fitness score
+                    // is messed up anyways
+                    let save_cast = |wn_freq_boost, &w| {
+                        if wn_freq_boost < std::i16::MIN as f32 {
+                            println!("Word frequency boost outmaxed by {}",
+                                     env.dict_vec[w as usize]);
+                            std::i16::MIN
+                        } else {
+                            // save cast now
+                            wn_freq_boost as i16
+                        }
+                    };
+
+                    let w1_freq_boost = save_cast(w1_freq_boost, &wp_.w1);
+                    let w2_freq_boost = save_cast(w2_freq_boost, &wp_.w2);
+
+                    wp_.fitness += w1_freq_boost + w2_freq_boost; 
+
+                    wp_
+                });
+
+
+            // boost positively if a single wpair is defined
+            // by more than one pattern.
+
+            let tmp_wpair = (wp.w1, wp.w2);
+            if ! already_pattern_boosted.contains(&tmp_wpair){
+                wp.fitness += WPAIR_PATTERN_BOOST;
+                // TODO try to find solution with pointer
+                // this is time consuming mem copy
+                already_pattern_boosted.insert(tmp_wpair);
+            }
+
         }
-
     }
+
+    println!("done qualifying found wpairs."); 
+    println!("wpair count: {}", wpair_count);
+
+    let mut wpairs: Vec<&WPair> = wpair_cache.values()
+        .filter(|wpair| wpair.fitness >= WPAIR_SURVIVOR_THRESHOLD)
+        .collect();
+    println!("{} wpairs left after applying threshold fitness of {}.",
+             wpairs.len(), WPAIR_SURVIVOR_THRESHOLD);
     
+    println!("sorting wpairs by fitness.");
+    wpairs.sort_unstable_by(
+        |a, b| i16::cmp(&a.fitness, &b.fitness).reverse());
+    println!("done sorting wpairs by fitness.");
 
-    
-    
-    // for (wpair, patterns) in wpair_on_patterns {
-    //     println!("patterns for wpair: (\"{}\", \"{}\") {}",
-    //              &env.dict_vec[wpair.w1 as usize],
-    //              &env.dict_vec[wpair.w2 as usize],
-    //              patterns.len());
+    println!("building a map of w1 to vec w2");
 
-        
-    //     // for pattern in patterns {
-    //     //     println!("prefix: {}, infix: {:?}, suffix: {}, order: {}",
-    //     //              if pattern.prefix == EMPTY_WORD { "empty" } else { &env.dict_vec[pattern.prefix as usize] },
-    //     //              {pattern.infix.iter().map(|word_nr| &env.dict_vec[*word_nr as usize]).collect::<Vec<&String>>()},
-    //     //              if pattern.suffix == EMPTY_WORD { "empty" } else { &env.dict_vec[pattern.suffix as usize] },
-    //     //              pattern.order);
-    //     // }
-    // }
+    let mut w1_on_w2s: HashMap<&WordNr, Vec<&WordNr>> = HashMap::new();
+    for wpair in wpairs {
+        w1_on_w2s.entry(&wpair.w1)
+            .or_insert(Vec::new())
+            .push(&wpair.w2);
+    }
+    println!("done building a map of w1 to vec w2");
 
-    // for (wpair, s_ids) in wpair_on_sentence_ids {
-
-    //     println!("sentences for wpair: (\"{}\", \"{}\")",
-    //              &env.dict_vec[wpair.w1 as usize],
-    //              &env.dict_vec[wpair.w2 as usize]);
-
-    //     for s_id in s_ids {
-    //         let sent = &env.sentences[s_id as usize];
-    //         println!("{:?}", translate(sent, &env));
-    //     }
-
-    // }
+    for (w1, w2s) in w1_on_w2s {
+        println!("\"{}\":", env.dict_vec[*w1 as usize]);
+        for w in w2s.iter().map(|w| &env.dict_vec[**w as usize]) {
+            println!("\t \"{}\"", w);
+        }
+    }
 
 }
