@@ -4,3 +4,6 @@
 data/
 data2/
 data3/
+*.bin
+/data.out
+/sync.sh

@@ -1,4 +1,9 @@
 use serde::{Serialize, Deserialize};
+
+use std::fs::File;
+use bincode::{serialize_into, deserialize_from};
+use std::io::{BufWriter, BufReader};
+
 use std::env;
 use std::fs;
 use std::collections::HashMap;
@@ -12,6 +17,8 @@ type WordNr = u32;
 
 // consider Option instead of an artificial 'null'
 const EMPTY_WORD: u32 = std::u32::MAX;
+
+const DATA_BIN: &str = "data.bin";
 
 // pattern was found for one or more wpairs 
 const PATTERN_WPAIR_BOOST: i16 = 10;
@@ -61,8 +68,8 @@ impl WPair {
 
     fn new_str(w1: &str, w2: &str, env: &Env) -> WPair {
 
-        let w1 = env.dict.get(w1).expect("w1 not found in dict.");
-        let w2 = env.dict.get(w2).expect("w2 not found in dict.");
+        let w1 = env.data.dict.get(w1).expect("w1 not found in dict.");
+        let w2 = env.data.dict.get(w2).expect("w2 not found in dict.");
 
         WPair::new(*w1, *w2)
     }
@@ -71,8 +78,8 @@ impl WPair {
 
         println!("fitness: {}, w1: {}, w2: {}",
                  self.fitness,
-                 if self.w1 == EMPTY_WORD { "empty" } else { &env.dict_vec[self.w1 as usize] },
-                 if self.w2 == EMPTY_WORD { "empty" } else { &env.dict_vec[self.w2 as usize] });
+                 if self.w1 == EMPTY_WORD { "empty" } else { &env.data.dict_vec[self.w1 as usize] },
+                 if self.w2 == EMPTY_WORD { "empty" } else { &env.data.dict_vec[self.w2 as usize] });
     }
 }
 
@@ -108,22 +115,23 @@ impl Pattern {
 
         println!("fitness: {}, prefix: {}, infix: {:?}, suffix: {}, order: {}",
                  self.fitness,
-                 if self.prefix == EMPTY_WORD { "empty" } else { &env.dict_vec[self.prefix as usize] },
-                 {self.infix.iter().map(|word_nr| &env.dict_vec[*word_nr as usize]).collect::<Vec<&String>>()},
-                 if self.suffix == EMPTY_WORD { "empty" } else { &env.dict_vec[self.suffix as usize] },
+                 if self.prefix == EMPTY_WORD { "empty" } else { &env.data.dict_vec[self.prefix as usize] },
+                 {self.infix.iter().map(|word_nr| &env.data.dict_vec[*word_nr as usize]).collect::<Vec<&String>>()},
+                 if self.suffix == EMPTY_WORD { "empty" } else { &env.data.dict_vec[self.suffix as usize] },
                  self.order);
     }
 }
 
+#[derive(Serialize, Deserialize)]
 struct Data {
     dict_vec: Vec<String>,
     dict: HashMap<String, WordNr>,
     inverted_idx: HashMap<WordNr, HashSet<SentenceId>>,
+    sentences: Vec<Vec<WordNr>>,
 }
 
 struct Env {
     data: Data,
-    sentences: Vec<Vec<WordNr>>,
     _pairs: Vec<WPair>,
     the: WordNr
 }
@@ -134,30 +142,30 @@ impl Env {
             dict_vec: Vec::new(),
             dict: HashMap::new(),
             inverted_idx: HashMap::new(),
+            sentences: Vec::new(), 
         };
         Env {
             data: d,
-            sentences: Vec::new(), 
             _pairs: Vec::new(), 
             the: EMPTY_WORD
         }
     }
 
     fn add_word(&mut self, w: &str) -> WordNr {
-        if self.dict.contains_key(w) {
-            return self.dict[w];
+        if self.data.dict.contains_key(w) {
+            return self.data.dict[w];
         } else {
-            let i = self.dict_vec.len() as WordNr; 
+            let i = self.data.dict_vec.len() as WordNr; 
 
             //TODO rly two copies needed?
-            self.dict_vec.push(w.to_owned());
-            self.dict.insert(w.to_owned(), i);
+            self.data.dict_vec.push(w.to_owned());
+            self.data.dict.insert(w.to_owned(), i);
             return i;
         }
     }
 
     fn add_inv_idx(&mut self, w: WordNr, s_id: SentenceId) {
-        self.inverted_idx.entry(w)
+        self.data.inverted_idx.entry(w)
             .or_insert(HashSet::new())
             .insert(s_id);
     }
@@ -211,13 +219,13 @@ fn read_xml_file(file_name: &str, env: &mut Env){
                     .collect::<Vec<Vec<u32>>>();
 
                 for (i, sent) in sentences.iter().enumerate() {
-                    let sentence_id: SentenceId = (i + env.sentences.len()) as u32; 
+                    let sentence_id: SentenceId = (i + env.data.sentences.len()) as u32; 
                     for word in sent {
                         env.add_inv_idx(*word, sentence_id);
                     }
                 }
 
-                env.sentences.append(&mut sentences);
+                env.data.sentences.append(&mut sentences);
             },
 
             Err(e) => panic!(
@@ -232,8 +240,8 @@ fn read_xml_file(file_name: &str, env: &mut Env){
 }
 
 fn find_matches_wpair(wpair: &WPair, env: &Env) -> HashSet<SentenceId>{
-    let idx_w1 = env.inverted_idx.get(&wpair.w1).expect("w1 not found in inverted index");
-    let idx_w2 = env.inverted_idx.get(&wpair.w2).expect("w2 not found in inverted index");
+    let idx_w1 = env.data.inverted_idx.get(&wpair.w1).expect("w1 not found in inverted index");
+    let idx_w2 = env.data.inverted_idx.get(&wpair.w2).expect("w2 not found in inverted index");
 
     idx_w1.intersection(&idx_w2)
         .map(|s_id| *s_id)
@@ -261,13 +269,13 @@ fn find_matches_pattern(pattern: &Pattern, env: &Env) -> Vec<WPair> {
 
     
     // take sentence_ids for first word of infix
-    let sentence_ids_infix_pos_0 = env.inverted_idx.get(&pattern.infix[0])
+    let sentence_ids_infix_pos_0 = env.data.inverted_idx.get(&pattern.infix[0])
         .expect("infix word not found in inverted index");
 
     let mut sentence_ids: HashSet<SentenceId> = sentence_ids_infix_pos_0.to_owned();
 
     for i in 1..l {
-        let sentence_ids_infix_pos_i = env.inverted_idx.get(&pattern.infix[i])
+        let sentence_ids_infix_pos_i = env.data.inverted_idx.get(&pattern.infix[i])
             .expect("infix word not found in inverted index");
 
         sentence_ids = sentence_ids.intersection(sentence_ids_infix_pos_i)
@@ -280,7 +288,7 @@ fn find_matches_pattern(pattern: &Pattern, env: &Env) -> Vec<WPair> {
 
     sentence_ids.iter()
         .map(|s_id| {
-            let sent = &env.sentences[*s_id as usize];
+            let sent = &env.data.sentences[*s_id as usize];
             let mut infix_pos_0_idx = std::usize::MAX;
 
             for (i, word) in sent.iter().enumerate() {
@@ -383,7 +391,7 @@ fn extract_pattern(wpair: &WPair, sent: &Vec<WordNr>) -> Pattern {
 }
 
 fn _translate <'a> (sent: &Vec<WordNr>, env: &'a Env) -> Vec<&'a String>{
-    sent.iter().map(|word_nr| &env.dict_vec[*word_nr as usize]).collect()
+    sent.iter().map(|word_nr| &env.data.dict_vec[*word_nr as usize]).collect()
 }
 
 fn file_names_from_directory(dir: &str) -> std::io::Result<Vec<String>> {
@@ -398,15 +406,9 @@ fn file_names_from_directory(dir: &str) -> std::io::Result<Vec<String>> {
 }
 
 
-fn main() {
-
-    println!("starting.");
+fn read_and_serialize_xmls(args: &Vec<String>){
+    println!("starting read_and_serialize_xmls.");
     let mut env = Env::new();
-
-    let args: Vec<String> = env::args().collect(); 
-    if args.len() < 1 {
-        panic!("please provide xml directory as parameter.");
-    }
 
     println!("reading files from directory {}.", &args[1]);
     for file_name in file_names_from_directory(&args[1])
@@ -418,9 +420,39 @@ fn main() {
     println!("done reading files from directory.");
 
     println!("{} sentences loaded, with {} distinct words."
-             , env.sentences.len(), env.dict_vec.len()); 
+             , env.data.sentences.len(), env.data.dict_vec.len()); 
 
-    env.the = *env.dict.get("the")
+    println!("starting writing binary file {}.", DATA_BIN);
+
+    let mut f = BufWriter::new(File::create(DATA_BIN).unwrap());
+    serialize_into(&mut f, &env.data).unwrap();
+
+    println!("done writing binary file.");
+    
+    println!("done read_and_serialize_xmls.");
+}
+
+fn main() {
+
+    let args: Vec<String> = env::args().collect(); 
+
+    if args.len() > 1 {
+        read_and_serialize_xmls(&args);
+        return;
+    }
+
+    println!("starting.");
+    let mut env = Env::new();
+
+    println!("start reading binary data from {}.", DATA_BIN);
+    let mut f = BufReader::new(File::open(DATA_BIN).unwrap());
+    env.data = deserialize_from(&mut f).unwrap();
+    println!("done reading binary data.");
+
+    println!("{} sentences loaded, with {} distinct words."
+             , env.data.sentences.len(), env.data.dict_vec.len()); 
+
+    env.the = *env.data.dict.get("the")
         .expect("\"the\" not found in dictionary.");
 
     let wpairs = vec![
@@ -444,7 +476,7 @@ fn main() {
             
             let patterns = sentence_ids.iter()
                 .map(|s_id| {
-                    let sent = &env.sentences[*s_id as usize];
+                    let sent = &env.data.sentences[*s_id as usize];
                     extract_pattern(wpair, sent)
                 }).collect::<Vec<Pattern>>();
 
@@ -540,7 +572,7 @@ fn main() {
     let mut wpair_cache: HashMap<(WordNr, WordNr), WPair> = HashMap::new();
 
     let wpair_word_frequency_boost =
-        WPAIR_WORD_GLOBAL_FREQUENCY_BOOST_PER_SENTENCE / env.sentences.len() as f32;  
+        WPAIR_WORD_GLOBAL_FREQUENCY_BOOST_PER_SENTENCE / env.data.sentences.len() as f32;  
 
     println!("wpair_word_frequency_boost = {}", wpair_word_frequency_boost);
 
@@ -568,7 +600,7 @@ fn main() {
                     // this term seem to be overly general
 
                     let calc_freq_boost = |w| {
-                        env.inverted_idx.get(w)
+                        env.data.inverted_idx.get(w)
                             .expect("w not found in inverted index")
                             .len() as f32 * wpair_word_frequency_boost 
                     };
@@ -582,7 +614,7 @@ fn main() {
                     let save_cast = |wn_freq_boost, &w| {
                         if wn_freq_boost < std::i16::MIN as f32 {
                             println!("Word frequency boost outmaxed by {}",
-                                     env.dict_vec[w as usize]);
+                                     env.data.dict_vec[w as usize]);
                             std::i16::MIN
                         } else {
                             // save cast now
@@ -638,8 +670,8 @@ fn main() {
     println!("done building a map of w1 to vec w2");
 
     for (w1, w2s) in w1_on_w2s {
-        println!("\"{}\":", env.dict_vec[*w1 as usize]);
-        for w in w2s.iter().map(|w| &env.dict_vec[**w as usize]) {
+        println!("\"{}\":", env.data.dict_vec[*w1 as usize]);
+        for w in w2s.iter().map(|w| &env.data.dict_vec[**w as usize]) {
             println!("\t \"{}\"", w);
         }
     }
