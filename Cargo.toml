@@ -7,3 +7,5 @@ edition = "2018"
 [dependencies]
 unicode-segmentation = "1.6.0"
 quick-xml = "0.17.2"
+bincode = "1.2.1"
+serde = "1.0.104"

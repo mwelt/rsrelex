@@ -1,3 +1,4 @@
+use serde::{Serialize, Deserialize};
 use std::env;
 use std::fs;
 use std::collections::HashMap;
@@ -103,7 +104,7 @@ impl Pattern {
         }
     }
 
-    fn _println(&self, env: &Env) {
+    fn println(&self, env: &Env) {
 
         println!("fitness: {}, prefix: {}, infix: {:?}, suffix: {}, order: {}",
                  self.fitness,
@@ -114,10 +115,14 @@ impl Pattern {
     }
 }
 
-struct Env {
+struct Data {
     dict_vec: Vec<String>,
     dict: HashMap<String, WordNr>,
     inverted_idx: HashMap<WordNr, HashSet<SentenceId>>,
+}
+
+struct Env {
+    data: Data,
     sentences: Vec<Vec<WordNr>>,
     _pairs: Vec<WPair>,
     the: WordNr
@@ -125,10 +130,13 @@ struct Env {
 
 impl Env {
     fn new() -> Env {
-        Env {
+        let d = Data {
             dict_vec: Vec::new(),
             dict: HashMap::new(),
             inverted_idx: HashMap::new(),
+        };
+        Env {
+            data: d,
             sentences: Vec::new(), 
             _pairs: Vec::new(), 
             the: EMPTY_WORD
@@ -513,6 +521,10 @@ fn main() {
         .collect();
     println!("{} patterns left after applying threshold fitness of {}.",
              patterns.len(), PATTERN_SURVIVOR_THRESHOLD);
+
+    for pattern in &patterns {
+        pattern.println(&env);
+    }
 
     println!("finding new wpairs for surviving patterns (fitness >= {}).",
              PATTERN_SURVIVOR_THRESHOLD);
