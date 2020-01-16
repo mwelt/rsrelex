@@ -31,7 +31,7 @@ const PATTERN_MEDIUM_SIZED_BOOST: i16 = 0;
 // pattern is to long MALUS
 const PATTERN_LONG_SIZED_BOOST: i16 = -40;
 
-const PATTERN_SURVIVOR_THRESHOLD: i16 = 20;
+const PATTERN_SURVIVOR_THRESHOLD: i16 = 12;
 
 const WPAIR_SURVIVOR_THRESHOLD: i16 = 20;
 
@@ -107,7 +107,7 @@ impl Pattern {
     fn new(prefix: WordNr, infix: Vec<WordNr>, suffix: WordNr, order: bool) -> Pattern {
         Pattern {
             prefix, infix, suffix, order,
-            fitness: 9i16
+            fitness: 0i16
         }
     }
 
@@ -467,16 +467,16 @@ fn main() {
         .expect("\"the\" not found in dictionary.");
 
     let wpairs = vec![
-        // WPair::new_str("organs", "liver", &env),
-        // WPair::new_str("organs", "lung", &env),
-        // WPair::new_str("bacteria", "Staphylococcus", &env),
-        // WPair::new_str("bacteria", "Streptococcus", &env),
-        // WPair::new_str("organs", "esophagus", &env)
-        WPair::new_str("cancer", "BRCA1", &env),
-        WPair::new_str("cancer", "UV", &env),
-        WPair::new_str("cancer", "ultraviolet", &env),
-        WPair::new_str("cancer", "alcohol", &env),
-        WPair::new_str("cancer", "tobacco", &env),
+        WPair::new_str("organs", "liver", &env),
+        WPair::new_str("organs", "lung", &env),
+        WPair::new_str("bacteria", "Staphylococcus", &env),
+        WPair::new_str("bacteria", "Streptococcus", &env),
+        WPair::new_str("organs", "esophagus", &env)
+        // WPair::new_str("cancer", "BRCA1", &env),
+        // WPair::new_str("cancer", "UV", &env),
+        // WPair::new_str("cancer", "ultraviolet", &env),
+        // WPair::new_str("cancer", "alcohol", &env),
+        // WPair::new_str("cancer", "tobacco", &env),
     ];
 
     println!("finding matches for input {} wpairs.", wpairs.len());
