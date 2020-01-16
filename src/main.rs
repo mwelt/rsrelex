@@ -182,6 +182,8 @@ fn read_xml_file(file_name: &str, env: &mut Env){
 
     let mut read: bool = false;
 
+    let mut curr_str = String::new();
+
     println!("Start reading file {}", file_name);
 
     loop {
@@ -199,6 +201,25 @@ fn read_xml_file(file_name: &str, env: &mut Env){
             Ok(Event::End(ref e)) => {
                 match e.name() {
                     b"AbstractText" => {
+
+                        let mut sentences = curr_str.unicode_sentences()
+                            .map(|sent| sent
+                                 .split_word_bounds()
+                                 .filter(|word| *word != " ")
+                                 .map(|word| env.add_word(word))
+                                 .collect::<Vec<u32>>())
+                            .collect::<Vec<Vec<u32>>>();
+
+                        for (i, sent) in sentences.iter().enumerate() {
+                            let sentence_id: SentenceId = (i + env.data.sentences.len()) as u32; 
+                            for word in sent {
+                                env.add_inv_idx(*word, sentence_id);
+                            }
+                        }
+
+                        env.data.sentences.append(&mut sentences);
+
+                        curr_str = String::new(); 
                         read = false;
                     }, 
                     _ => (),
@@ -209,23 +230,8 @@ fn read_xml_file(file_name: &str, env: &mut Env){
 
                 let s: String = e.unescape_and_decode(&reader)
                    .expect("Error while reading text from xml.");
-                
-                let mut sentences = s.unicode_sentences()
-                    .map(|sent| sent
-                         .split_word_bounds()
-                         .filter(|word| *word != " ")
-                         .map(|word| env.add_word(word))
-                         .collect::<Vec<u32>>())
-                    .collect::<Vec<Vec<u32>>>();
 
-                for (i, sent) in sentences.iter().enumerate() {
-                    let sentence_id: SentenceId = (i + env.data.sentences.len()) as u32; 
-                    for word in sent {
-                        env.add_inv_idx(*word, sentence_id);
-                    }
-                }
-
-                env.data.sentences.append(&mut sentences);
+                curr_str.push_str(&s);
             },
 
             Err(e) => panic!(
@@ -303,10 +309,10 @@ fn find_matches_pattern(pattern: &Pattern, env: &Env) -> Vec<WPair> {
                        pattern.infix[0], sent);
             }
 
-            (infix_pos_0_idx, sent)
+            (infix_pos_0_idx, sent, s_id)
 
         })
-        .filter(|(infix_pos_0_idx, sent)| {
+        .filter(|(infix_pos_0_idx, sent, _s_id)| {
 
             for i in 1..pattern.infix.len() {
                 let p = infix_pos_0_idx + i;
@@ -318,7 +324,7 @@ fn find_matches_pattern(pattern: &Pattern, env: &Env) -> Vec<WPair> {
             true
             
         })
-        .map(|(infix_pos_0_idx, sent)| {
+        .map(|(infix_pos_0_idx, sent, s_id)| {
             let w1 = if infix_pos_0_idx == 0 {
                 EMPTY_WORD
             } else {
@@ -334,6 +340,11 @@ fn find_matches_pattern(pattern: &Pattern, env: &Env) -> Vec<WPair> {
                     if idx2 + 1 == sent.len() {
                         // there is "the" as the final word of a sentence?
                         println!("Somthing strange in my neighbourhood! Call Ghost Busters!");
+                        println!("theres a sentence which ends with \"the\"! Let's take a look.");
+                        println!("{:?}", translate(&env.data.sentences[*s_id as usize], &env));
+                        for i in 1..4 {
+                            println!("{:?}", translate(&env.data.sentences[(s_id + i) as usize], &env));
+                        }
                         EMPTY_WORD
                     } else {
                         sent[idx2 + 1]
@@ -390,7 +401,7 @@ fn extract_pattern(wpair: &WPair, sent: &Vec<WordNr>) -> Pattern {
 
 }
 
-fn _translate <'a> (sent: &Vec<WordNr>, env: &'a Env) -> Vec<&'a String>{
+fn translate <'a> (sent: &Vec<WordNr>, env: &'a Env) -> Vec<&'a String>{
     sent.iter().map(|word_nr| &env.data.dict_vec[*word_nr as usize]).collect()
 }
 
@@ -456,16 +467,16 @@ fn main() {
         .expect("\"the\" not found in dictionary.");
 
     let wpairs = vec![
-        WPair::new_str("organs", "liver", &env),
-        WPair::new_str("organs", "lung", &env),
-        WPair::new_str("bacteria", "Staphylococcus", &env),
-        WPair::new_str("bacteria", "Streptococcus", &env),
-        WPair::new_str("organs", "esophagus", &env)
-        // WPair::new_str("cancer", "BRCA1", &env),
-        // WPair::new_str("cancer", "UV", &env),
-        // WPair::new_str("cancer", "ultraviolet", &env),
-        // WPair::new_str("cancer", "alcohol", &env),
-        // WPair::new_str("cancer", "tobacco", &env),
+        // WPair::new_str("organs", "liver", &env),
+        // WPair::new_str("organs", "lung", &env),
+        // WPair::new_str("bacteria", "Staphylococcus", &env),
+        // WPair::new_str("bacteria", "Streptococcus", &env),
+        // WPair::new_str("organs", "esophagus", &env)
+        WPair::new_str("cancer", "BRCA1", &env),
+        WPair::new_str("cancer", "UV", &env),
+        WPair::new_str("cancer", "ultraviolet", &env),
+        WPair::new_str("cancer", "alcohol", &env),
+        WPair::new_str("cancer", "tobacco", &env),
     ];
 
     println!("finding matches for input {} wpairs.", wpairs.len());
