@@ -1,0 +1,223 @@
+use serde::{Serialize, Deserialize};
+
+use std::collections::HashMap;
+use std::collections::HashSet;
+
+use std::fs::File;
+use bincode::{serialize_into, deserialize_from};
+use std::io::{BufWriter, BufReader};
+
+pub type SentenceId = u32;
+pub type WordNr = u32;
+
+// consider Option instead of an artificial 'null'
+pub const EMPTY_WORD: u32 = std::u32::MAX;
+
+pub struct WPair {
+    pub w1: WordNr,
+    pub w2: WordNr,
+    pub fitness: i16
+}
+
+impl Clone for WPair {
+   fn clone(&self) -> WPair {
+        WPair {
+            w1: self.w1,
+            w2: self.w2,
+            fitness: self.fitness
+        }
+    }
+}
+
+impl WPair {
+    pub fn new(w1: WordNr, w2: WordNr) -> WPair {
+        WPair {
+           w1, w2,
+           fitness: 0i16 
+        }
+    }
+
+    pub fn new_str(w1: &str, w2: &str, env: &Env) -> WPair {
+
+        let w1 = env.dict.get_opt_nr(w1).expect("w1 not found in dict.");
+        let w2 = env.dict.get_opt_nr(w2).expect("w2 not found in dict.");
+
+        WPair::new(w1, w2)
+    }
+
+    pub fn println(&self, env: &Env) {
+        println!("fitness: {}, w1: {}, w2: {}",
+                 self.fitness,
+                 if self.w1 == EMPTY_WORD { "empty" }
+                 else { &env.dict.get_word(&self.w1) },
+                 if self.w2 == EMPTY_WORD { "empty" }
+                 else { &env.dict.get_word(&self.w2) });
+    }
+}
+
+pub struct Pattern {
+    pub prefix: WordNr,
+    pub infix: Vec<WordNr>,
+    pub suffix: WordNr,
+    pub order: bool,
+    pub fitness: i16
+}
+
+impl Clone for Pattern {
+    fn clone(&self) -> Pattern {
+        Pattern {
+            prefix: self.prefix,
+            infix: self.infix.clone(),
+            suffix: self.suffix,
+            order: self.order,
+            fitness: self.fitness
+        }
+    }
+}
+
+impl Pattern {
+    pub fn new(prefix: WordNr, infix: Vec<WordNr>,
+               suffix: WordNr, order: bool) -> Pattern {
+        Pattern {
+            prefix, infix, suffix, order,
+            fitness: 0i16
+        }
+    }
+
+    pub fn println(&self, env: &Env) {
+        println!("fitness: {}, prefix: {}, infix: {:?}, suffix: {}, order: {}",
+                 self.fitness,
+
+                 if self.prefix == EMPTY_WORD { "empty" }
+                 else { env.dict.get_word(&self.prefix) },
+
+                 {
+                     self.infix.iter()
+                         .map(|word_nr|
+                              env.dict.get_word(&word_nr))
+                         .collect::<Vec<&str>>()
+                 },
+
+                 if self.suffix == EMPTY_WORD { "empty" }
+                 else { &env.dict.get_word(&self.suffix) },
+
+                 self.order);
+    }
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct InvertedIndex {
+    pub inverted_idx: HashMap<WordNr, HashSet<SentenceId>>,
+}
+
+impl InvertedIndex {
+    const FILE_NAME: &'static str = "inv_idx.bin";
+
+    pub fn new() -> InvertedIndex {
+        InvertedIndex {
+            inverted_idx: HashMap::new()
+        }
+    }
+
+    pub fn persist(&self) {
+
+        println!("starting writing binary file {}.", InvertedIndex::FILE_NAME);
+
+        let mut f = BufWriter::new(
+            File::create(InvertedIndex::FILE_NAME)
+                .expect("could not create file to persist InvertedIndex"));
+
+        serialize_into(&mut f, self).unwrap();
+
+        println!("done writing binary file.");
+    
+    }
+
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct Sentences {
+    pub sentences: Vec<Vec<WordNr>>
+}
+
+impl Sentences {
+    pub const FileName: &'static str = "sent.bin";
+
+    pub fn new() -> Sentences {
+        Sentences {
+            // TODO think about linked list?
+            sentences: Vec::new()
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct Dict {
+    pub dict_vec: Vec<String>,
+    pub dict: HashMap<String, WordNr>,
+}
+
+impl Dict {
+    pub const FILE_NAME: &'static str = "dict.bin";
+
+    pub fn new() -> Dict {
+        Dict {
+            dict_vec: Vec::new(),
+            dict: HashMap::new()
+        }
+    }
+
+    // do not return a reference (8 byte) on a
+    // 4 byte number, but copy the number instead
+    pub fn get_nr (&self, w: &str) -> WordNr {
+        self.dict[w]
+    }
+
+    pub fn get_opt_nr (&self, w: &str) -> Option<WordNr> {
+        self.dict.get(w).map(|w| w.clone())
+    }
+
+    pub fn get_word <'a> (&'a self, n: &WordNr ) -> &'a str{
+        & self.dict_vec[*n as usize]
+    }
+}
+
+pub struct Env {
+    pub sentences: Sentences,
+    pub inverted_idx: InvertedIndex,
+    pub dict: Dict,
+    pub _pairs: Vec<WPair>,
+    pub the: WordNr
+}
+
+impl Env {
+    pub fn new() -> Env {
+        Env {
+            sentences: Sentences::new(),
+            inverted_idx: InvertedIndex::new(),
+            dict: Dict::new(),
+            _pairs: Vec::new(), 
+            the: EMPTY_WORD
+        }
+    }
+
+    pub fn add_word(&mut self, w: &str) -> WordNr {
+        if self.dict.dict.contains_key(w) {
+            return self.dict.dict[w];
+        } else {
+            let i = self.dict.dict_vec.len() as WordNr; 
+
+            //TODO rly two copies needed?
+            self.dict.dict_vec.push(w.to_owned());
+            self.dict.dict.insert(w.to_owned(), i);
+            return i;
+        }
+    }
+
+    pub fn add_inv_idx(&mut self, w: WordNr, s_id: SentenceId) {
+        self.inverted_idx.inverted_idx.entry(w)
+            .or_insert(HashSet::new())
+            .insert(s_id);
+    }
+
+}
