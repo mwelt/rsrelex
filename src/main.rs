@@ -31,7 +31,6 @@ const WPAIR_WORD_GLOBAL_FREQUENCY_BOOST_PER_SENTENCE: f32 = -0.1;
 
 // wpair is identified over various patterns
 const WPAIR_PATTERN_BOOST: i16 = 10;
-
 fn read_xml_file(file_name: &str, env: &mut Env){
 
     let mut reader = Reader::from_file(file_name)
@@ -70,7 +69,8 @@ fn read_xml_file(file_name: &str, env: &mut Env){
                             .collect::<Vec<Vec<u32>>>();
 
                         for (i, sent) in sentences.iter().enumerate() {
-                            let sentence_id: SentenceId = (i + env.sentences.sentences.len()) as u32; 
+                            let sentence_id: SentenceId =
+                                (i + env.sentences.sentences.len()) as u32; 
                             for word in sent {
                                 env.add_inv_idx(*word, sentence_id);
                             }
