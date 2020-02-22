@@ -8,4 +8,6 @@ edition = "2018"
 unicode-segmentation = "1.6.0"
 quick-xml = "0.17.2"
 bincode = "1.2.1"
+hyper = "0.13.2"
+reroute = "0.4.1"
 serde = { version = "1.0.104", features = ["derive"] }

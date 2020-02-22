@@ -1,4 +1,5 @@
 use serde::{Serialize, Deserialize};
+use serde::de::DeserializeOwned;
 
 use std::collections::HashMap;
 use std::collections::HashSet;
@@ -13,6 +14,35 @@ pub type WordNr = u32;
 // consider Option instead of an artificial 'null'
 pub const EMPTY_WORD: u32 = std::u32::MAX;
 
+pub fn serialize<T: Serialize>(selfs: &T, bin_file: &str) {
+
+    println!("start writing binary file {}.", bin_file);
+
+    let mut f = BufWriter::new(
+        File::create(bin_file)
+        .expect("could not create file to persist binary data."));
+
+    serialize_into(&mut f, selfs).unwrap();
+
+    println!("done writing binary file.");
+
+}
+
+pub fn deserialize<T: DeserializeOwned>(bin_file: &str) -> T {
+
+    println!("start reading binary file {}.", bin_file);
+
+    let mut f = BufReader::new(
+        File::open(bin_file).unwrap());
+
+    let o = deserialize_from(&mut f).unwrap();
+
+    println!("done reading binary file.");
+
+    o 
+}
+
+#[derive(Debug)]
 pub struct WPair {
     pub w1: WordNr,
     pub w2: WordNr,
@@ -119,18 +149,12 @@ impl InvertedIndex {
         }
     }
 
-    pub fn persist(&self) {
+    pub fn serialize(&self) {
+        serialize(self, InvertedIndex::FILE_NAME);
+    }
 
-        println!("starting writing binary file {}.", InvertedIndex::FILE_NAME);
-
-        let mut f = BufWriter::new(
-            File::create(InvertedIndex::FILE_NAME)
-                .expect("could not create file to persist InvertedIndex"));
-
-        serialize_into(&mut f, self).unwrap();
-
-        println!("done writing binary file.");
-    
+    pub fn deserialize() -> InvertedIndex {
+        deserialize(InvertedIndex::FILE_NAME)
     }
 
 }
@@ -141,13 +165,21 @@ pub struct Sentences {
 }
 
 impl Sentences {
-    pub const FileName: &'static str = "sent.bin";
+    pub const FILE_NAME: &'static str = "sent.bin";
 
     pub fn new() -> Sentences {
         Sentences {
             // TODO think about linked list?
             sentences: Vec::new()
         }
+    }
+
+    pub fn serialize(&self) {
+        serialize(self, Sentences::FILE_NAME);
+    }
+
+    pub fn deserialize() -> Sentences{
+        deserialize(Sentences::FILE_NAME)
     }
 }
 
@@ -174,11 +206,19 @@ impl Dict {
     }
 
     pub fn get_opt_nr (&self, w: &str) -> Option<WordNr> {
-        self.dict.get(w).map(|w| w.clone())
+        self.dict.get(w).copied()
     }
 
     pub fn get_word <'a> (&'a self, n: &WordNr ) -> &'a str{
         & self.dict_vec[*n as usize]
+    }
+    
+    pub fn serialize(&self) {
+        serialize(self, Dict::FILE_NAME);
+    }
+
+    pub fn deserialize() -> Dict {
+        deserialize(Dict::FILE_NAME)
     }
 }
 
@@ -203,21 +243,34 @@ impl Env {
 
     pub fn add_word(&mut self, w: &str) -> WordNr {
         if self.dict.dict.contains_key(w) {
-            return self.dict.dict[w];
+            self.dict.dict[w]
         } else {
             let i = self.dict.dict_vec.len() as WordNr; 
 
             //TODO rly two copies needed?
             self.dict.dict_vec.push(w.to_owned());
             self.dict.dict.insert(w.to_owned(), i);
-            return i;
+            i
         }
     }
 
     pub fn add_inv_idx(&mut self, w: WordNr, s_id: SentenceId) {
         self.inverted_idx.inverted_idx.entry(w)
-            .or_insert(HashSet::new())
+            .or_insert_with(HashSet::new)
             .insert(s_id);
     }
 
+    pub fn serialize(&self) {
+        self.inverted_idx.serialize();
+        self.sentences.serialize();
+        self.dict.serialize();
+    }
+
+    pub fn deserialize() -> Env {
+        let mut e = Env::new();
+        e.dict = Dict::deserialize();
+        e.sentences = Sentences::deserialize();
+        e.inverted_idx = InvertedIndex::deserialize();
+        e
+    }
 }

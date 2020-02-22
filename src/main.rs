@@ -48,40 +48,34 @@ fn read_xml_file(file_name: &str, env: &mut Env){
         match reader.read_event(&mut buf) {
 
             Ok(Event::Start(ref e)) => {
-                match e.name() {
-                    b"AbstractText" => {
-                        read = true;
-                    }, 
-                    _ => (),
+                if b"AbstractText" == e.name() {
+                    read = true;
                 }
             },
 
             Ok(Event::End(ref e)) => {
-                match e.name() {
-                    b"AbstractText" => {
+                if b"AbstractText" == e.name() {
 
-                        let mut sentences = curr_str.unicode_sentences()
-                            .map(|sent| sent
-                                 .split_word_bounds()
-                                 .filter(|word| *word != " ")
-                                 .map(|word| env.add_word(word))
-                                 .collect::<Vec<u32>>())
-                            .collect::<Vec<Vec<u32>>>();
+                    let mut sentences = curr_str.unicode_sentences()
+                        .map(|sent| sent
+                             .split_word_bounds()
+                             .filter(|word| *word != " ")
+                             .map(|word| env.add_word(word))
+                             .collect::<Vec<u32>>())
+                        .collect::<Vec<Vec<u32>>>();
 
-                        for (i, sent) in sentences.iter().enumerate() {
-                            let sentence_id: SentenceId =
-                                (i + env.sentences.sentences.len()) as u32; 
-                            for word in sent {
-                                env.add_inv_idx(*word, sentence_id);
-                            }
+                    for (i, sent) in sentences.iter().enumerate() {
+                        let sentence_id: SentenceId =
+                            (i + env.sentences.sentences.len()) as u32; 
+                        for word in sent {
+                            env.add_inv_idx(*word, sentence_id);
                         }
+                    }
 
-                        env.sentences.sentences.append(&mut sentences);
+                    env.sentences.sentences.append(&mut sentences);
 
-                        curr_str = String::new(); 
-                        read = false;
-                    }, 
-                    _ => (),
+                    curr_str = String::new(); 
+                    read = false;
                 }
             }
            
@@ -111,7 +105,7 @@ fn find_matches_wpair(wpair: &WPair, env: &Env) -> HashSet<SentenceId>{
         .expect("w2 not found in inverted index");
 
     idx_w1.intersection(&idx_w2)
-        .map(|s_id| *s_id)
+        .copied()
         .collect::<HashSet<SentenceId>>()
 }
 
@@ -148,7 +142,7 @@ fn find_matches_pattern(pattern: &Pattern, env: &Env) -> Vec<WPair> {
             .expect("infix word not found in inverted index");
 
         sentence_ids = sentence_ids.intersection(sentence_ids_infix_pos_i)
-            .map(|s_id| *s_id)
+            .copied()
             .collect::<HashSet<SentenceId>>(); 
     }
 
@@ -223,16 +217,12 @@ fn find_matches_pattern(pattern: &Pattern, env: &Env) -> Vec<WPair> {
                 WPair::new(w2, w1)
             }
         })
-        .filter(|WPair {w1, w2, fitness: _}|
-                if *w1 == EMPTY_WORD || *w2 == EMPTY_WORD {
-                    false
-                } else {
-                    true
-                })
+        .filter(|WPair {w1, w2, ..}|
+                !(*w1 == EMPTY_WORD || *w2 == EMPTY_WORD) )
         .collect()
 }
 
-fn extract_pattern(wpair: &WPair, sent: &Vec<WordNr>) -> Pattern {
+fn extract_pattern(wpair: &WPair, sent: &[WordNr]) -> Pattern {
 
     let mut idx1 = std::usize::MAX;
     let mut idx2 = std::usize::MAX;
@@ -264,7 +254,7 @@ fn extract_pattern(wpair: &WPair, sent: &Vec<WordNr>) -> Pattern {
 
 }
 
-fn translate <'a> (sent: &Vec<WordNr>, env: &'a Env) -> Vec<&'a str>{
+fn translate <'a> (sent: &[WordNr], env: &'a Env) -> Vec<&'a str>{
     sent.iter().map(|word_nr| env.dict.get_word(word_nr)).collect()
 }
 
@@ -280,7 +270,7 @@ fn file_names_from_directory(dir: &str) -> std::io::Result<Vec<String>> {
 }
 
 
-fn read_and_serialize_xmls(args: &Vec<String>){
+fn read_and_serialize_xmls(args: &[String]){
     println!("starting read_and_serialize_xmls.");
     let mut env = Env::new();
 
@@ -296,56 +286,21 @@ fn read_and_serialize_xmls(args: &Vec<String>){
     println!("{} sentences loaded, with {} distinct words."
              , env.sentences.sentences.len(), env.dict.dict_vec.len()); 
 
-    // TODO save sentences, dictionary and inverted index seperately
-    // println!("starting writing binary file {}.", DATA_BIN);
+    println!("starting writing binary files.");
 
-    // let mut f = BufWriter::new(File::create(DATA_BIN).unwrap());
-    // serialize_into(&mut f, &env.data).unwrap();
+    env.serialize();
 
-    // println!("done writing binary file.");
+    println!("done writing binary files.");
     
-    // println!("done read_and_serialize_xmls.");
+    println!("done read_and_serialize_xmls.");
 }
 
-fn main() {
+fn do_dipre(wpairs: Vec<(&str, &str)>, env: &Env){
+   
+    let wpairs: Vec<WPair> = wpairs.iter()
+        .map(|(w1, w2)| WPair::new_str(w1, w2, env)).collect(); 
 
-    let args: Vec<String> = env::args().collect(); 
-
-    if args.len() > 1 {
-        read_and_serialize_xmls(&args);
-        return;
-    }
-
-    println!("starting.");
-    let mut env = Env::new();
-
-    // TODO load sentences, dictionary and inverted index sperately
-    // println!("start reading binary data from {}.", DATA_BIN);
-    // let mut f = BufReader::new(File::open(DATA_BIN).unwrap());
-    // env.data = deserialize_from(&mut f).unwrap();
-    // println!("done reading binary data.");
-
-    println!("{} sentences loaded, with {} distinct words."
-             , env.sentences.sentences.len(),
-             env.dict.dict_vec.len()); 
-
-    env.the = env.dict.get_opt_nr("the")
-        .expect("\"the\" not found in dictionary.");
-
-    let wpairs = vec![
-        WPair::new_str("organs", "liver", &env),
-        WPair::new_str("organs", "lung", &env),
-        WPair::new_str("bacteria", "Staphylococcus", &env),
-        WPair::new_str("bacteria", "Streptococcus", &env),
-        WPair::new_str("organs", "esophagus", &env)
-        // WPair::new_str("cancer", "BRCA1", &env),
-        // WPair::new_str("cancer", "UV", &env),
-        // WPair::new_str("cancer", "ultraviolet", &env),
-        // WPair::new_str("cancer", "alcohol", &env),
-        // WPair::new_str("cancer", "tobacco", &env),
-    ];
-
-    println!("finding matches for input {} wpairs.", wpairs.len());
+    println!("finding matches for input {:?} wpairs.", wpairs);
     let wpair_on_patterns: Vec<(&WPair, Vec<Pattern>)> =
         wpairs.iter()
         .map(|wpair| {
@@ -541,7 +496,7 @@ fn main() {
     let mut w1_on_w2s: HashMap<&WordNr, Vec<&WordNr>> = HashMap::new();
     for wpair in wpairs {
         w1_on_w2s.entry(&wpair.w1)
-            .or_insert(Vec::new())
+            .or_insert_with(Vec::new)
             .push(&wpair.w2);
     }
     println!("done building a map of w1 to vec w2");
@@ -552,5 +507,57 @@ fn main() {
             println!("\t \"{}\"", w);
         }
     }
+}
+
+fn main() {
+
+    let args: Vec<String> = env::args().collect(); 
+
+    if args.len() > 1 {
+        read_and_serialize_xmls(&args);
+        return;
+    }
+
+    println!("starting.");
+
+    println!("start reading binary data.");
+    let mut env = Env::deserialize();
+    println!("done reading binary data.");
+
+    println!("{} sentences loaded, with {} distinct words."
+             , env.sentences.sentences.len(),
+             env.dict.dict_vec.len()); 
+
+    env.the = env.dict.get_opt_nr("the")
+        .expect("\"the\" not found in dictionary.");
+
+    // let wpairs = vec![
+    //     WPair::new_str("organs", "liver", &env),
+    //     WPair::new_str("organs", "lung", &env),
+    //     WPair::new_str("bacteria", "Staphylococcus", &env),
+    //     WPair::new_str("bacteria", "Streptococcus", &env),
+    //     WPair::new_str("organs", "esophagus", &env)
+    //     // WPair::new_str("cancer", "BRCA1", &env),
+    //     // WPair::new_str("cancer", "UV", &env),
+    //     // WPair::new_str("cancer", "ultraviolet", &env),
+    //     // WPair::new_str("cancer", "alcohol", &env),
+    //     // WPair::new_str("cancer", "tobacco", &env),
+    // ];
+
+    let wpairs = vec![
+        ("organs", "liver"),
+        ("organs", "lung"),
+        ("bacteria", "Staphylococcus"),
+        ("bacteria", "Streptococcus"),
+        ("organs", "esophagus")
+        // ("cancer", "BRCA1"),
+        // ("cancer", "UV"),
+        // ("cancer", "ultraviolet"),
+        // ("cancer", "alcohol"),
+        // ("cancer", "tobacco"),
+    ];
+
+    do_dipre(wpairs, &env);
 
 }
+
