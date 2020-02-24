@@ -8,6 +8,8 @@ use std::fs::File;
 use bincode::{serialize_into, deserialize_from};
 use std::io::{BufWriter, BufReader};
 
+use async_trait::async_trait;
+
 pub type SentenceId = u32;
 pub type WordNr = u32;
 
@@ -273,4 +275,35 @@ impl Env {
         e.inverted_idx = InvertedIndex::deserialize();
         e
     }
+}
+
+
+#[derive(Serialize, Deserialize)]
+pub struct DipreInput {
+    pub pairs: Vec<(String, String)>
+}
+
+impl DipreInput {
+    pub fn new(pairs: Vec<(&str, &str)>) -> DipreInput {
+        DipreInput {
+            pairs: pairs.iter()
+                .map(|(a, b)| ((*a).to_string(), (*b).to_string()))
+                .collect()
+        }
+    }
+
+    pub fn serialize(&self) -> String {
+        serde_json::to_string(self)
+            .expect("Could not serialize DipreInput to JSON String")
+    }
+
+    pub fn deserialize(s: &str) -> DipreInput {
+        serde_json::from_str(s)
+            .expect("Could not deserialize JSON String to DipreInput")
+    }
+}
+
+#[async_trait]
+pub trait AsyncLogger {
+    async fn log(&mut self, s: String) -> ();
 }
