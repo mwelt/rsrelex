@@ -20,9 +20,12 @@ impl AsyncLogger for ALogger {
     async fn log(&mut self, mut s: String) {
         println!("{}", s);
         s.push_str("\n");
-        //TODO: check for error and mark the 
-        //connection failure, to ignore this on further calls
-        self.sender.send_data(s.into()).await;
+        if self.conn_valid {
+            if let Err(e) = self.sender.send_data(s.into()).await {
+                eprintln!("logging endpoint failed, marking connection as invalid: {}", e);
+                self.conn_valid = false;
+            }
+        }
     }
 }
 
@@ -36,14 +39,13 @@ async fn handle_client(_req: Request<Body>, env: Arc<Env>)
             let (sender, body) = Body::channel();
 
             let logger = ALogger {
-                sender
+                sender,
+                conn_valid: true
             };
 
             let env = env.clone();
 
             let calc = async move {
-                //sender.send_data("Hello World".to_string().into()).await;
-                //logger.log("Hello World".to_string()).await;
                 do_dipre(di, env.as_ref(), logger).await;
             };
 
