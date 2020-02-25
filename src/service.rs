@@ -81,14 +81,15 @@ async fn handle_client(_req: Request<Body>, env: Arc<Env>)
 
 //SERVER
 pub async fn run_server(env: Env){
-    
+   
+    let port = 23233;
     let env = Arc::new(env);
     // let senv = Arc::new(ServerEnv::new()); 
 
     // save a reference for later use
     // let senv_ = senv.clone();
 
-    let addr = SocketAddr::from(([127,0,0,1], 2323));
+    let addr = SocketAddr::from(([0,0,0,0], port));
 
     let make_svc = make_service_fn(move |_| {
         // let senv = senv.clone();
@@ -106,6 +107,7 @@ pub async fn run_server(env: Env){
     });
 
     let server = Server::bind(&addr).serve(make_svc);
+    println!("Starting server on port {}", port);
 
     // let f = async {
         if let Err(e) = server.await {
