@@ -1,4 +1,5 @@
-use super::types::{AsyncLogger, DipreInput, EMPTY_WORD, WordNr, SentenceId, Env, WPair, Pattern}; 
+use super::types::{AsyncLogger, DipreInput, EMPTY_WORD,
+WordNr, SentenceId, Env, WPair, Pattern}; 
 
 use std::collections::HashMap;
 use std::collections::HashSet;
@@ -68,7 +69,8 @@ fn find_matches_pattern(pattern: &Pattern, env: &Env) -> Vec<WPair> {
             .get(&pattern.infix[i])
             .expect("infix word not found in inverted index");
 
-        sentence_ids = sentence_ids.intersection(sentence_ids_infix_pos_i)
+        sentence_ids = sentence_ids
+            .intersection(sentence_ids_infix_pos_i)
             .copied()
             .collect::<HashSet<SentenceId>>(); 
     }
@@ -123,7 +125,7 @@ fn find_matches_pattern(pattern: &Pattern, env: &Env) -> Vec<WPair> {
             if sent[idx2] == env.the {
                 if idx2 + 1 == sent.len() {
                     // there is "the" as the final word of a sentence?
-                    println!("Somthing strange in my neighbourhood! Call Ghost Busters!");
+                    println!("Something strange in my neighbourhood! Call Ghost Busters!");
                     println!("theres a sentence which ends with \"the\"! Let's take a look.");
                     println!("{:?}", translate(&env.sentences.sentences[*s_id as usize], &env));
                     for i in 1..4 {
@@ -185,7 +187,8 @@ fn translate <'a> (sent: &[WordNr], env: &'a Env) -> Vec<&'a str>{
     sent.iter().map(|word_nr| env.dict.get_word(word_nr)).collect()
 }
 
-pub async fn do_dipre<F: AsyncLogger>(di: DipreInput, env: &Env, mut log: F) {
+pub async fn do_dipre<F: AsyncLogger>(
+    di: DipreInput, env: &Env, mut log: F) {
 
     let wpairs: Vec<WPair> = di.pairs.iter()
         .map(|(w1, w2)| WPair::new_str(w1, w2, env)).collect(); 

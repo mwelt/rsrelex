@@ -277,7 +277,6 @@ impl Env {
     }
 }
 
-
 #[derive(Serialize, Deserialize)]
 pub struct DipreInput {
     pub pairs: Vec<(String, String)>
@@ -303,6 +302,30 @@ impl DipreInput {
     }
 }
 
+pub struct CoocInput {
+    pub set: Vec<String>
+}
+
+impl CoocInput {
+    pub fn new(set: Vec<&str>) -> CoocInput {
+        CoocInput {
+            set: set.iter().
+                .map(|a| (*a).to_string())
+                .collect()
+        }
+
+        pub fn serialize(&self) -> String {
+            serde_json::to_string(self)
+                .expect("Could not serialize CoocInput to JSON String")
+        }
+
+        pub fn deserialize(s: &str) -> CoocInput {
+            serde_json::from_str(s)
+                .expect("Could not deserialize JSON String to CoocInput")
+        }
+    }
+}
+    
 #[async_trait]
 pub trait AsyncLogger {
     async fn log(&mut self, s: String) -> ();
