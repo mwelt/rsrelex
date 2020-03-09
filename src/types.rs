@@ -16,6 +16,10 @@ pub type WordNr = u32;
 // consider Option instead of an artificial 'null'
 pub const EMPTY_WORD: u32 = std::u32::MAX;
 
+pub fn serialize_with_directory<T: Serialize>(selfs: &T, dir: String, 
+                                              bin_file: &str) {
+}
+
 pub fn serialize<T: Serialize>(selfs: &T, bin_file: &str) {
 
     println!("start writing binary file {}.", bin_file);
@@ -151,8 +155,14 @@ impl InvertedIndex {
         }
     }
 
-    pub fn serialize(&self) {
-        serialize(self, InvertedIndex::FILE_NAME);
+    pub fn serialize(&self, dir: String) {
+        if dir.chars().last()
+            .expect("Directory string empty.") != '/' {
+
+            dir.push_str("/");
+        }
+        dir.push_str(InvertedIndex::FILE_NAME);
+        serialize(self, &dir);
     }
 
     pub fn deserialize() -> InvertedIndex {
@@ -243,6 +253,16 @@ impl Env {
         }
     }
 
+    pub fn get_inverted_idx(&self, w: &WordNr) -> &HashSet<SentenceId> {
+        self.inverted_idx.inverted_idx.get(w)
+            .unwrap_or_else(
+                || panic!("No inverted index entry for word number {}.", w))
+    }
+
+    pub fn get_sentence(&self, s_id: &SentenceId) -> &Vec<WordNr> {
+        &self.sentences.sentences[*s_id as usize]
+    }
+
     pub fn add_word(&mut self, w: &str) -> WordNr {
         if self.dict.dict.contains_key(w) {
             self.dict.dict[w]
@@ -302,7 +322,7 @@ impl DipreInput {
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct CoocInput {
     pub set: Vec<String>
 }
