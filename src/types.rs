@@ -302,6 +302,7 @@ impl DipreInput {
     }
 }
 
+#[derive(Serialize, Deserialize)]
 pub struct CoocInput {
     pub set: Vec<String>
 }
@@ -309,20 +310,20 @@ pub struct CoocInput {
 impl CoocInput {
     pub fn new(set: Vec<&str>) -> CoocInput {
         CoocInput {
-            set: set.iter().
+            set: set.iter()
                 .map(|a| (*a).to_string())
                 .collect()
         }
+    }
 
-        pub fn serialize(&self) -> String {
-            serde_json::to_string(self)
-                .expect("Could not serialize CoocInput to JSON String")
-        }
+    pub fn serialize(&self) -> String {
+        serde_json::to_string(self)
+            .expect("Could not serialize CoocInput to JSON String")
+    }
 
-        pub fn deserialize(s: &str) -> CoocInput {
-            serde_json::from_str(s)
-                .expect("Could not deserialize JSON String to CoocInput")
-        }
+    pub fn deserialize(s: &str) -> CoocInput {
+        serde_json::from_str(s)
+            .expect("Could not deserialize JSON String to CoocInput")
     }
 }
     

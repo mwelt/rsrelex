@@ -1,6 +1,7 @@
 pub mod service;
 pub mod types;
 pub mod dipre;
+pub mod cooc;
 
 use types::{SentenceId, Env};
 
