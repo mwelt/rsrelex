@@ -3,7 +3,7 @@ pub mod types;
 pub mod dipre;
 pub mod cooc;
 
-use types::{SentenceId, Env};
+use types::{SentenceId, Env, CoocInput};
 
 use std::env;
 use std::fs;
@@ -11,6 +11,8 @@ use std::fs;
 use unicode_segmentation::UnicodeSegmentation;
 use quick_xml::Reader;
 use quick_xml::events::Event;
+
+use getopts::Options;
 
 fn file_names_from_directory(dir: &str) -> std::io::Result<Vec<String>> {
     let mut r = Vec::new();
@@ -90,12 +92,15 @@ fn read_xml_file(file_name: &str, env: &mut Env){
     println!("done reading file.");
 }
 
-fn read_and_serialize_xmls(args: &[String]){
+fn read_and_serialize_xmls(input_dir: &str, output_dir: &str){
     println!("starting read_and_serialize_xmls.");
     let mut env = Env::new();
 
-    println!("reading files from directory {}.", &args[1]);
-    for file_name in file_names_from_directory(&args[1])
+    // let input_dir: &str = args.get(1).expect("no input directory provided.");
+    // let output_dir: &str = args.get(2).expect("no output directory provided.");
+
+    println!("reading files from directory {}.", input_dir);
+    for file_name in file_names_from_directory(input_dir)
         .expect("could not read input directory.") {
 
             read_xml_file(&file_name, &mut env);
@@ -108,7 +113,7 @@ fn read_and_serialize_xmls(args: &[String]){
 
     println!("starting writing binary files.");
 
-    env.serialize();
+    env.serialize(output_dir.to_owned());
 
     println!("done writing binary files.");
 
@@ -132,10 +137,32 @@ fn bootstrap() -> Env {
     env
 }
 
-#[tokio::main]
-async fn main() {
+// #[tokio::main]
+// async fn main() {
+fn main() {
 
     let args: Vec<String> = env::args().collect(); 
+
+    let mut opts = Options::new();
+    opts.optopt("x", "import-xml", "import xml files from directory", "DIR");
+    opts.reqopt("b", "bin-files", "bin-file directory (if -x is present this directory denotes the
+        output directory, otherwise bin-file backup data is read from this directory).", "DIR");
+
+    let matches = match opts.parse(&args[1..]) {
+        Ok(m) => { m }
+        Err(f) => { panic!(f.to_string()) }
+    };
+
+    let bin_file_dir = matches.opt_str("b");
+
+    if matches.opt_present("x") {
+        // do xml import
+        let input_dir = matches.opt_str("x");
+        read_and_serialize_xmls(input_dir, bin_file_dir);
+    } else {
+        // start server
+    }
+
 
     if args.len() > 1 {
         read_and_serialize_xmls(&args);
@@ -161,7 +188,9 @@ async fn main() {
     // println!("Json: {}", json);
     // do_dipre(DipreInput::deserialize(&json), &env);
 
-    service::run_server(env).await;    
+    // service::run_server(env).await;    
 
+    let cooc_input = CoocInput::new(vec!["liver", "lung", "esophagus"]);
+    cooc::do_cooc(cooc_input, &env);
 
 }

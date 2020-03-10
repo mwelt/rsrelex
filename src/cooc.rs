@@ -16,14 +16,21 @@ fn cooccurrences_for_word(word: &WordNr, env: &Env) -> HashSet<WordNr>{
 
 }
 
-fn do_cooc(cooc_input: CoocInput, env: &Env) {
+fn cooc_input_to_word_nr_set(cooc_input: &CoocInput, env: &Env) 
+    -> HashSet<WordNr>{
 
-    println!("Converting input {:?} into set of word numbers", cooc_input);
-    let bootstrap_set = cooc_input.set.iter()
+    cooc_input.set.iter()
         .map(|word_str| env.dict.get_opt_nr(word_str)
              .unwrap_or_else(
-                 || panic!("No word number found for word {}.", word_str)));
-    println!("Done converting input into set of word numbers: {:?}", 
+                 || panic!("No word number found for word {}.", word_str)))
+        .collect()
+}
+
+pub fn do_cooc(cooc_input: CoocInput, env: &Env) {
+
+    println!("Converting input {:?} into set of word numbers", cooc_input);
+    let bootstrap_set = cooc_input_to_word_nr_set(&cooc_input, &env);
+    println!("Done converting input into set of word numbers: {:?}",           
              bootstrap_set);
 
     let mut coocs_on_count: HashMap<WordNr, u32> = HashMap::new(); 

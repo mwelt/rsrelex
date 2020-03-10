@@ -16,8 +16,15 @@ pub type WordNr = u32;
 // consider Option instead of an artificial 'null'
 pub const EMPTY_WORD: u32 = std::u32::MAX;
 
-pub fn serialize_with_directory<T: Serialize>(selfs: &T, dir: String, 
+pub fn serialize_with_directory<T: Serialize>(selfs: &T, mut dir: String, 
                                               bin_file: &str) {
+
+    if dir.chars().last().expect("Directory string empty.") != '/' {
+        dir.push_str("/");
+    }
+    dir.push_str(bin_file);
+    serialize(selfs, &dir); 
+
 }
 
 pub fn serialize<T: Serialize>(selfs: &T, bin_file: &str) {
@@ -156,12 +163,6 @@ impl InvertedIndex {
     }
 
     pub fn serialize(&self, dir: String) {
-        if dir.chars().last()
-            .expect("Directory string empty.") != '/' {
-
-            dir.push_str("/");
-        }
-        dir.push_str(InvertedIndex::FILE_NAME);
         serialize(self, &dir);
     }
 
@@ -186,8 +187,8 @@ impl Sentences {
         }
     }
 
-    pub fn serialize(&self) {
-        serialize(self, Sentences::FILE_NAME);
+    pub fn serialize(&self, dir: String) {
+        serialize_with_directory(self, dir, Sentences::FILE_NAME);
     }
 
     pub fn deserialize() -> Sentences{
@@ -225,8 +226,8 @@ impl Dict {
         & self.dict_vec[*n as usize]
     }
     
-    pub fn serialize(&self) {
-        serialize(self, Dict::FILE_NAME);
+    pub fn serialize(&self, dir: String) {
+        serialize_with_directory(self, dir, Dict::FILE_NAME);
     }
 
     pub fn deserialize() -> Dict {
@@ -282,10 +283,10 @@ impl Env {
             .insert(s_id);
     }
 
-    pub fn serialize(&self) {
-        self.inverted_idx.serialize();
-        self.sentences.serialize();
-        self.dict.serialize();
+    pub fn serialize(&self, dir: String) {
+        self.inverted_idx.serialize(dir.clone());
+        self.sentences.serialize(dir.clone());
+        self.dict.serialize(dir);
     }
 
     pub fn deserialize() -> Env {
