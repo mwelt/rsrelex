@@ -120,11 +120,11 @@ fn read_and_serialize_xmls(input_dir: &str, output_dir: &str){
     println!("done read_and_serialize_xmls.");
 }
 
-fn bootstrap() -> Env {
+fn bootstrap(dir: String) -> Env {
     println!("bootstraping.");
 
     println!("start reading binary data.");
-    let mut env = Env::deserialize();
+    let mut env = Env::deserialize(dir);
     println!("done reading binary data.");
 
     println!("{} sentences loaded, with {} distinct words."
@@ -136,12 +136,17 @@ fn bootstrap() -> Env {
 
     env
 }
+fn print_usage(program: &str, opts: Options){
+    let brief = format!("Usage: {} [options]", program);
+    print!("{}", opts.usage(&brief));
+}
 
 // #[tokio::main]
 // async fn main() {
 fn main() {
 
     let args: Vec<String> = env::args().collect(); 
+    let program = args[0].clone();
 
     let mut opts = Options::new();
     opts.optopt("x", "import-xml", "import xml files from directory", "DIR");
@@ -153,23 +158,64 @@ fn main() {
         Err(f) => { panic!(f.to_string()) }
     };
 
-    let bin_file_dir = matches.opt_str("b");
+    let bin_file_dir = match matches.opt_str("b") {
+        None => { 
+            print_usage(&program, opts);
+            return;
+        }
+        Some(d) => { d }
+    };
 
     if matches.opt_present("x") {
         // do xml import
-        let input_dir = matches.opt_str("x");
-        read_and_serialize_xmls(input_dir, bin_file_dir);
+        let input_dir = match matches.opt_str("x") {
+            None => { 
+                print_usage(&program, opts);
+                return;
+            }
+            Some(d) => { d }
+        };
+        read_and_serialize_xmls(&input_dir, &bin_file_dir);
     } else {
         // start server
+        let env = bootstrap(bin_file_dir);
+        let cooc_input = CoocInput::new(vec![ "SLC1A5",
+                                        "CXADR",
+                                        "CAV2",
+                                        "NUP98",
+                                        "CTBP2",
+                                        "GSN",
+                                        "HSPA1B",
+                                        "STOM",
+                                        "RAB1B",
+                                        "HACD3",
+                                        "ITGB6",
+                                        "IST1",
+                                        "NUCKS1",
+                                        "TRIM27",
+                                        "APOE",
+                                        "SMARCB1",
+                                        "UBP1",
+                                        "CHMP1A",
+                                        "NUP160",
+                                        "HSPA8",
+                                        "DAG1",
+                                        "STAU1",
+                                        "ICAM1",
+                                        "CHMP5",
+                                        "DEK",
+                                        "VPS37B",
+                                        "EGFR",
+                                        "CCNK",
+                                        "PPIA",
+                                        "IFITM3",
+                                        "PPIB",
+                                        "TMPRSS2",
+                                        "UBC",
+                                        "LAMP1",
+                                        "CHMP3"]);
+        cooc::do_cooc(cooc_input, &env);
     }
-
-
-    if args.len() > 1 {
-        read_and_serialize_xmls(&args);
-        return;
-    }
-
-    let env = bootstrap();
 
     // let wpairs = vec![
     //     ("organs", "liver"),
@@ -190,7 +236,5 @@ fn main() {
 
     // service::run_server(env).await;    
 
-    let cooc_input = CoocInput::new(vec!["liver", "lung", "esophagus"]);
-    cooc::do_cooc(cooc_input, &env);
 
 }

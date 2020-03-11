@@ -16,15 +16,17 @@ pub type WordNr = u32;
 // consider Option instead of an artificial 'null'
 pub const EMPTY_WORD: u32 = std::u32::MAX;
 
-pub fn serialize_with_directory<T: Serialize>(selfs: &T, mut dir: String, 
-                                              bin_file: &str) {
-
+pub fn build_directory_string(mut dir: String, bin_file: &str) -> String {
     if dir.chars().last().expect("Directory string empty.") != '/' {
         dir.push_str("/");
     }
     dir.push_str(bin_file);
-    serialize(selfs, &dir); 
+    dir
+}
 
+pub fn serialize_with_directory<T: Serialize>(selfs: &T, dir: String, 
+                                              bin_file: &str) {
+    serialize(selfs, &build_directory_string(dir, bin_file)); 
 }
 
 pub fn serialize<T: Serialize>(selfs: &T, bin_file: &str) {
@@ -39,6 +41,11 @@ pub fn serialize<T: Serialize>(selfs: &T, bin_file: &str) {
 
     println!("done writing binary file.");
 
+}
+
+pub fn deserialize_with_directory<T: DeserializeOwned>(
+    dir: String, bin_file: &str) -> T {
+    deserialize(& build_directory_string(dir, bin_file)) 
 }
 
 pub fn deserialize<T: DeserializeOwned>(bin_file: &str) -> T {
@@ -163,11 +170,11 @@ impl InvertedIndex {
     }
 
     pub fn serialize(&self, dir: String) {
-        serialize(self, &dir);
+        serialize_with_directory(self, dir, &InvertedIndex::FILE_NAME);
     }
 
-    pub fn deserialize() -> InvertedIndex {
-        deserialize(InvertedIndex::FILE_NAME)
+    pub fn deserialize(dir: String) -> InvertedIndex {
+        deserialize_with_directory(dir, &InvertedIndex::FILE_NAME)
     }
 
 }
@@ -191,8 +198,8 @@ impl Sentences {
         serialize_with_directory(self, dir, Sentences::FILE_NAME);
     }
 
-    pub fn deserialize() -> Sentences{
-        deserialize(Sentences::FILE_NAME)
+    pub fn deserialize(dir: String) -> Sentences{
+        deserialize_with_directory(dir, &Sentences::FILE_NAME)
     }
 }
 
@@ -230,8 +237,8 @@ impl Dict {
         serialize_with_directory(self, dir, Dict::FILE_NAME);
     }
 
-    pub fn deserialize() -> Dict {
-        deserialize(Dict::FILE_NAME)
+    pub fn deserialize(dir: String) -> Dict {
+        deserialize_with_directory(dir, &Dict::FILE_NAME)
     }
 }
 
@@ -289,11 +296,11 @@ impl Env {
         self.dict.serialize(dir);
     }
 
-    pub fn deserialize() -> Env {
+    pub fn deserialize(dir: String) -> Env {
         let mut e = Env::new();
-        e.dict = Dict::deserialize();
-        e.sentences = Sentences::deserialize();
-        e.inverted_idx = InvertedIndex::deserialize();
+        e.dict = Dict::deserialize(dir.clone());
+        e.sentences = Sentences::deserialize(dir.clone());
+        e.inverted_idx = InvertedIndex::deserialize(dir);
         e
     }
 }
