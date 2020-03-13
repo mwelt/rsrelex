@@ -359,3 +359,13 @@ impl CoocInput {
 pub trait AsyncLogger {
     async fn log(&mut self, s: String) -> ();
 }
+
+pub struct CoocFst {
+    word: WordNr,
+    fitness: i16
+}
+
+pub struct CoocSnd {
+    word: WordNr,
+    fitness: i16
+}

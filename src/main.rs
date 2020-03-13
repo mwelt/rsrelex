@@ -3,7 +3,7 @@ pub mod types;
 pub mod dipre;
 pub mod cooc;
 
-use types::{SentenceId, Env, CoocInput};
+use types::{SentenceId, Env, CoocInput, WordNr};
 
 use std::env;
 use std::fs;
@@ -111,6 +111,10 @@ fn read_and_serialize_xmls(input_dir: &str, output_dir: &str){
     println!("{} sentences loaded, with {} distinct words."
              , env.sentences.sentences.len(), env.dict.dict_vec.len()); 
 
+    println!("Starting sanity test.");
+    sanity_test(&env);
+    println!("Done sanity test.");
+
     println!("starting writing binary files.");
 
     env.serialize(output_dir.to_owned());
@@ -136,6 +140,27 @@ fn bootstrap(dir: String) -> Env {
 
     env
 }
+
+fn sanity_test(env: &Env){
+    // check if every dictionary word is associated with 
+    // an inverted index entry
+
+    let mut lost_words: Vec<WordNr> = Vec::new();
+
+    for w_nr in env.dict.dict.values() {
+        if ! env.inverted_idx.inverted_idx.contains_key(w_nr) {
+            lost_words.push(*w_nr);  
+        }
+    }
+
+    if ! lost_words.is_empty() {
+        println!("Words in dictionary without inverted_index entry:\n{:?}",
+               lost_words.iter().map(
+                   |w_nr| env.dict.get_word(w_nr)).collect::<Vec<&str>>());
+        panic!("Sanity check failed!");
+    }
+}
+
 fn print_usage(program: &str, opts: Options){
     let brief = format!("Usage: {} [options]", program);
     print!("{}", opts.usage(&brief));
@@ -149,6 +174,7 @@ fn main() {
     let program = args[0].clone();
 
     let mut opts = Options::new();
+    opts.optflag("s", "sanity", "test sanity of bin-files");
     opts.optopt("x", "import-xml", "import xml files from directory", "DIR");
     opts.reqopt("b", "bin-files", "bin-file directory (if -x is present this directory denotes the
         output directory, otherwise bin-file backup data is read from this directory).", "DIR");
@@ -166,6 +192,7 @@ fn main() {
         Some(d) => { d }
     };
 
+
     if matches.opt_present("x") {
         // do xml import
         let input_dir = match matches.opt_str("x") {
@@ -177,8 +204,15 @@ fn main() {
         };
         read_and_serialize_xmls(&input_dir, &bin_file_dir);
     } else {
-        // start server
         let env = bootstrap(bin_file_dir);
+
+        if matches.opt_present("s") {
+            println!("Starting sanity test.");
+            sanity_test(&env);
+            println!("Done sanity test.");
+        }
+        
+        // start server
         let cooc_input = CoocInput::new(vec![ "SLC1A5",
                                         "CXADR",
                                         "CAV2",
