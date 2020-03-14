@@ -1,15 +1,15 @@
-use super::types::{AsyncLogger, CoocInput, EMPTY_WORD,
-WordNr, SentenceId, Env, WPair, Pattern}; 
+use super::types::{CoocInput, WordNr, CoocFst, Env}; 
 
 use std::collections::HashMap;
 use std::collections::HashSet;
 
 // how many bootstrap words share this cooc
-const COOC1_WORD_FREQUENCY_BOOST: i16 = 10;
+const COOC1_WORD_FREQUENCY_BOOST: i16 = 50;
 // how frequent is this cooc overall w.r.t bootstrap set
-const COOC1_SET_FREQUENCY_BOOST: i16 = 1;
+const COOC1_SET_FREQUENCY_BOOST: i16 = 20;
 // overall termfrequency i.e. how many sentences contain this term
-const COOC1_GLOBAL_TERM_FREQUENCY_BOOST_PER_SENTENCE: f32 = -0.1;
+// const COOC1_GLOBAL_TERM_FREQUENCY_BOOST_PER_SENTENCE: f32 = -100.0;
+const COOC1_GLOBAL_TERM_FREQUENCY_BOOST_PER_SENTENCE: i16 = -1;
 
 // // pattern was found for one or more wpairs 
 // const PATTERN_WPAIR_BOOST: i16 = 10;
@@ -33,12 +33,12 @@ const COOC1_GLOBAL_TERM_FREQUENCY_BOOST_PER_SENTENCE: f32 = -0.1;
 // // wpair is identified over various patterns
 // const WPAIR_PATTERN_BOOST: i16 = 10;
 
-fn cooccurrences_for_word(word: WordNr, env: &Env) -> HashMap<WordNr, u32>{
+fn cooccurrences_for_word(word: WordNr, env: &Env) -> HashMap<WordNr, i16>{
     
     // get all sentences which contain word
     let sentence_ids = env.get_inverted_idx(&word);
 
-    let mut word_on_count: HashMap<WordNr, u32> = HashMap::new(); 
+    let mut word_on_count: HashMap<WordNr, i16> = HashMap::new(); 
 
     // count co-occurrences
     for s_id in sentence_ids {
@@ -87,43 +87,65 @@ fn cooc_input_to_word_nr_set(cooc_input: &CoocInput, env: &Env)
 
 pub fn do_cooc(cooc_input: CoocInput, env: &Env) {
 
+    // this can get seriously wrong if the numbers outgrow
+    // i16::MIN, but if this happens our fitness score
+    // is messed up anyways
+    let save_cast = |wn_freq_boost: f32, w| {
+        if wn_freq_boost < std::i16::MIN as f32 {
+            println!("Word frequency boost outmaxed by {}",
+                            env.dict.get_word(&w));
+            std::i16::MIN
+        } else {
+            // save cast now
+            wn_freq_boost as i16
+        }
+    };
+
     println!("Converting input {:?} into set of word numbers", cooc_input);
     let bootstrap_set = cooc_input_to_word_nr_set(&cooc_input, &env);
     println!("Done converting input into set of word numbers: {:?}",           
              bootstrap_set);
 
-    let mut coocs_on_cooc_stat: HashMap<WordNr, CoocStats> = HashMap::new(); 
+    // let wpair_word_frequency_boost =
+    //     COOC1_GLOBAL_TERM_FREQUENCY_BOOST_PER_SENTENCE / env.sentences.sentences.len() as f32;  
+
+    // println!("wpair_word_frequency_boost = {}", wpair_word_frequency_boost);
+
+    let mut coocs_on_cooc_fst: HashMap<WordNr, CoocFst> = HashMap::new(); 
 
     println!("Collecting syntagmatic context");
     for word in bootstrap_set {
         let coocs_for_word = cooccurrences_for_word(word, env);
-        let mut already_word_frequency_inced: HashSet<WordNr> = HashSet::new(); 
+        let mut already_word_frequency_boosted: HashSet<WordNr> = HashSet::new(); 
 
         for (cooc, count) in coocs_for_word {
-            let mut current_cooc_stat = coocs_on_cooc_stat.entry(cooc)
-                .or_insert(CoocStats {
-                    word_frequency: 0u8,
-                    set_frequency: 0u32,
-                    term_frequency: env.get_inverted_idx(&cooc).len() 
-                });
-            if ! already_word_frequency_inced.contains(&cooc) {
-                current_cooc_stat.word_frequency += 1;
-                already_word_frequency_inced.insert(cooc);
+            let mut cooc_fst = coocs_on_cooc_fst.entry(cooc)
+                .or_insert({
+                     let freq_boost = env.get_inverted_idx(&cooc).len() as i16 
+                         * COOC1_GLOBAL_TERM_FREQUENCY_BOOST_PER_SENTENCE; 
+                    // let freq_boost = env.get_inverted_idx(&cooc).len() as f32 
+                    //     * wpair_word_frequency_boost;
+                    // let freq_boost = save_cast(freq_boost, cooc);
+                    CoocFst::new(cooc,freq_boost)});
+                
+            if ! already_word_frequency_boosted.contains(&cooc) {
+                cooc_fst.fitness += COOC1_WORD_FREQUENCY_BOOST;
+                already_word_frequency_boosted.insert(cooc);
             }
-            current_cooc_stat.set_frequency += count;
 
+            cooc_fst.fitness += count * COOC1_SET_FREQUENCY_BOOST;
         }
 
     }
 
-    let mut coocs_on_cooc_stat: Vec<(&str, &CoocStats)> =
-        coocs_on_cooc_stat.iter().map(
-            |(word_nr, cooc_stats)| (env.dict.get_word(word_nr), cooc_stats)).collect();
+    let mut coocs_on_cooc_fst: Vec<(&str, &CoocFst)> =
+        coocs_on_cooc_fst.iter().map(
+            |(word_nr, cooc_fst)| (env.dict.get_word(word_nr), cooc_fst)).collect();
 
-    coocs_on_cooc_stat.sort_unstable_by(
-        |(_, cooc_stats_a), (_, cooc_stats_b)| 
-        cooc_stats_a.word_frequency.cmp(&cooc_stats_b.word_frequency));
+    coocs_on_cooc_fst.sort_unstable_by(
+        |(_, cooc_fst_a), (_, cooc_fst_b)| 
+        cooc_fst_a.fitness.cmp(&cooc_fst_b.fitness));
 
-    println!("Done collecting syntagmatic context {:?}", coocs_on_cooc_stat);
+    println!("Done collecting syntagmatic context {:?}", coocs_on_cooc_fst);
 
 }

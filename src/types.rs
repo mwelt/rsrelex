@@ -360,11 +360,21 @@ pub trait AsyncLogger {
     async fn log(&mut self, s: String) -> ();
 }
 
+#[derive(Debug)]
 pub struct CoocFst {
-    word: WordNr,
-    fitness: i16
+    pub word: WordNr,
+    pub fitness: i16
 }
 
+impl CoocFst {
+    pub fn new(word: WordNr, fitness: i16) -> CoocFst {
+        CoocFst {
+            word, fitness
+        }
+    }
+}
+
+#[derive(Debug)]
 pub struct CoocSnd {
     word: WordNr,
     fitness: i16
