@@ -4,12 +4,12 @@ use std::collections::HashMap;
 use std::collections::HashSet;
 
 // how many bootstrap words share this cooc
-const COOC1_WORD_FREQUENCY_BOOST: i16 = 50;
+const COOC1_WORD_FREQUENCY_BOOST: isize = 50;
 // how frequent is this cooc overall w.r.t bootstrap set
-const COOC1_SET_FREQUENCY_BOOST: i16 = 20;
+const COOC1_SET_FREQUENCY_BOOST: isize = 0;
 // overall termfrequency i.e. how many sentences contain this term
 // const COOC1_GLOBAL_TERM_FREQUENCY_BOOST_PER_SENTENCE: f32 = -100.0;
-const COOC1_GLOBAL_TERM_FREQUENCY_BOOST_PER_SENTENCE: i16 = -1;
+const COOC1_GLOBAL_TERM_FREQUENCY_BOOST_PER_SENTENCE: isize = -1;
 
 // // pattern was found for one or more wpairs 
 // const PATTERN_WPAIR_BOOST: i16 = 10;
@@ -33,12 +33,12 @@ const COOC1_GLOBAL_TERM_FREQUENCY_BOOST_PER_SENTENCE: i16 = -1;
 // // wpair is identified over various patterns
 // const WPAIR_PATTERN_BOOST: i16 = 10;
 
-fn cooccurrences_for_word(word: WordNr, env: &Env) -> HashMap<WordNr, i16>{
+fn cooccurrences_for_word(word: WordNr, env: &Env) -> HashMap<WordNr, isize>{
     
     // get all sentences which contain word
     let sentence_ids = env.get_inverted_idx(&word);
 
-    let mut word_on_count: HashMap<WordNr, i16> = HashMap::new(); 
+    let mut word_on_count: HashMap<WordNr, isize> = HashMap::new(); 
 
     // count co-occurrences
     for s_id in sentence_ids {
@@ -121,7 +121,7 @@ pub fn do_cooc(cooc_input: CoocInput, env: &Env) {
         for (cooc, count) in coocs_for_word {
             let mut cooc_fst = coocs_on_cooc_fst.entry(cooc)
                 .or_insert({
-                     let freq_boost = env.get_inverted_idx(&cooc).len() as i16 
+                     let freq_boost = env.get_inverted_idx(&cooc).len() as isize
                          * COOC1_GLOBAL_TERM_FREQUENCY_BOOST_PER_SENTENCE; 
                     // let freq_boost = env.get_inverted_idx(&cooc).len() as f32 
                     //     * wpair_word_frequency_boost;

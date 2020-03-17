@@ -14,3 +14,5 @@ hyper = "0.13.2"
 tokio = { version = "0.2", features = ["full"] }
 async-trait = "0.1.24"
 getopts = "0.2.21"
+regex = "1.3.5"
+lazy_static = "1.4.0"

@@ -2,6 +2,13 @@ pub mod service;
 pub mod types;
 pub mod dipre;
 pub mod cooc;
+pub mod wikipedia_parser;
+
+#[macro_use]
+extern crate lazy_static;
+
+#[cfg(test)]
+mod tests;
 
 use types::{SentenceId, Env, CoocInput, WordNr};
 

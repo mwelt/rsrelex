@@ -363,11 +363,11 @@ pub trait AsyncLogger {
 #[derive(Debug)]
 pub struct CoocFst {
     pub word: WordNr,
-    pub fitness: i16
+    pub fitness: isize
 }
 
 impl CoocFst {
-    pub fn new(word: WordNr, fitness: i16) -> CoocFst {
+    pub fn new(word: WordNr, fitness: isize) -> CoocFst {
         CoocFst {
             word, fitness
         }
