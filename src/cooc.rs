@@ -90,16 +90,16 @@ pub fn do_cooc(cooc_input: CoocInput, env: &Env) {
     // this can get seriously wrong if the numbers outgrow
     // i16::MIN, but if this happens our fitness score
     // is messed up anyways
-    let save_cast = |wn_freq_boost: f32, w| {
-        if wn_freq_boost < std::i16::MIN as f32 {
-            println!("Word frequency boost outmaxed by {}",
-                            env.dict.get_word(&w));
-            std::i16::MIN
-        } else {
-            // save cast now
-            wn_freq_boost as i16
-        }
-    };
+    // let save_cast = |wn_freq_boost: f32, w| {
+    //     if wn_freq_boost < std::i16::MIN as f32 {
+    //         println!("Word frequency boost outmaxed by {}",
+    //                         env.dict.get_word(&w));
+    //         std::i16::MIN
+    //     } else {
+    //         // save cast now
+    //         wn_freq_boost as i16
+    //     }
+    // };
 
     println!("Converting input {:?} into set of word numbers", cooc_input);
     let bootstrap_set = cooc_input_to_word_nr_set(&cooc_input, &env);
