@@ -3,55 +3,71 @@ use regex::Regex;
 pub fn strip_markup(s: &str) -> String {
 
     lazy_static! {
-        static ref REMOVE: Vec<String> =  vec!(
-            "&quot;".into(), 
-            "'''".into(), 
-            "''".into(),
+        static ref REMOVE: Vec<&'static str> =  vec!(
+            "&quot;", 
+            "'''''", 
+            "'''", 
+            "''",
         );
 
         static ref REPLACE: Vec<(&'static str, &'static str)> = vec!(
-            ("&gt;", ">")
+            ("&gt;", ">"),
+            ("&lt;", "<")
         );
 
-        static ref REGEX: Vec<(Regex, String)> = vec!(
-            // (Regex::new(r"([\n|\^])(\s*(;|[*#:]+)[^\n]*[\n|$])").unwrap(), "".into()),
-            (Regex::new(r"(?m)(^\s*[*#:;]+[^\n]*$)").unwrap(), "".into()),
+        static ref REGEX: Vec<(Regex, &'static str)> = vec!(
+            // (Regex::new(r"([\n|\^])(\s*(;|[*#:]+)[^\n]*[\n|$])").unwrap(), ""),
+            (Regex::new(r"(?m)(^\s*[*#:;]+[^\n]*$)").unwrap(), ""),
 
             // every wikimarkup {{...}}
-            (Regex::new(r"(\{\{(?P<c>[^}]*)\}\})").unwrap(), "".into()),
+            (Regex::new(r"(\{\{(?P<c>[^}]*)\}\})").unwrap(), ""),
             // every wikimarkup {|...|}
-            (Regex::new(r"(\{\|(?P<c>[^}]*)\|\})").unwrap(), "".into()),
+            (Regex::new(r"(\{\|(?P<c>[^}]*)\|\})").unwrap(), ""),
             // every File link 
-            (Regex::new(r"(\[\[(?P<c>File:[^]]*).*\]\])").unwrap(), "".into()),
+            (Regex::new(r"(\[\[(?P<c>File:[^]]*).*\]\])").unwrap(), ""),
             // every Category link
-            (Regex::new(r"(\[\[(?P<c>Category:[^]]*).*\]\])").unwrap(), "".into()),
+            (Regex::new(r"(\[\[(?P<c>Category:[^]]*).*\]\])").unwrap(), ""),
             // modify wiki internal links
-            (Regex::new(r"(\[\[(?P<c>[^]|]*)\|?[^]]*\]\])").unwrap(), "$c".into()),
+            (Regex::new(r"(\[\[(?P<c>[^]|]*)\|?[^]]*\]\])").unwrap(), "$c"),
             // headlines
-            (Regex::new(r"(===== (?P<c>[^=]+) =====)").unwrap(), "".into()),
-            (Regex::new(r"(==== (?P<c>[^=]+) ====)").unwrap(), "".into()),
-            (Regex::new(r"(=== (?P<c>[^=]+) ===)").unwrap(), "".into()),
-            (Regex::new(r"(== (?P<c>[^=]+) ==)").unwrap(), "".into()),
-            (Regex::new(r"(= (?P<c>[^=]+) =)").unwrap(), "".into()),
+            (Regex::new(r"(===== (?P<c>[^=]+) =====)").unwrap(), ""),
+            (Regex::new(r"(==== (?P<c>[^=]+) ====)").unwrap(), ""),
+            (Regex::new(r"(=== (?P<c>[^=]+) ===)").unwrap(), ""),
+            (Regex::new(r"(== (?P<c>[^=]+) ==)").unwrap(), ""),
+            (Regex::new(r"(= (?P<c>[^=]+) =)").unwrap(), ""),
 
             // comments
-            (Regex::new(r"(<!--(?P<c>[^-]*)-->)").unwrap(), "".into()),
+            (Regex::new(r"(<!--(?P<c>[^-]*)-->)").unwrap(), ""),
             // horizontal rules
-            (Regex::new(r"(?m)(^\-+$)").unwrap(), "".into()),
+            (Regex::new(r"(?m)(^\-+$)").unwrap(), ""),
+
+            //inline html
+            (Regex::new(r"<small[^>]*>([^<]*)</small>").unwrap(), "$1"),
+            (Regex::new(r"<big[^>]*>([^<]*)</big>").unwrap(), "$1"),
+            (Regex::new(r"<blockquote[^>]*>([^<]*)</blockquote>").unwrap(), "$1"),
+            (Regex::new(r"<poem[^>]*>([^<]*)</poem>").unwrap(), "$1"),
+            (Regex::new(r"<[^>]*>[^<]*</[^>]*>").unwrap(), ""),
+            (Regex::new(r"<[^/]*/>").unwrap(), "")
             
-            // (Regex::new(r"(\n)(\s*;[^\n]*\n)").unwrap(), "$1".into()),
-            // (Regex::new(r"(\n)(\s*[*#:]+[^\n]*\n)").unwrap(), "$1".into()),
+            // (Regex::new(r"(\n)(\s*;[^\n]*\n)").unwrap(), "$1"),
+            // (Regex::new(r"(\n)(\s*[*#:]+[^\n]*\n)").unwrap(), "$1"),
             
-            // (Regex::new(r"[\n|\^](\v*[*#;:]+ [^\n]*\n)").unwrap(), "".into())
+            // (Regex::new(r"[\n|\^](\v*[*#;:]+ [^\n]*\n)").unwrap(), "")
         );
     } 
 
     let mut s: String = s.into(); 
-    for (regex, replace) in REGEX.iter() {
-        s = regex.replace_all(&s, replace as &str).into();
+
+    for (search, replace) in REPLACE.iter() {
+        s = s.replace(search, replace);
     }
+     
     for rem in REMOVE.iter() {
         s = s.replace(rem, "");
+    }
+
+    for (regex, replace) in REGEX.iter() {
+        s = regex.replace_all(&s, replace as &str).into();
     }
     s
 }
