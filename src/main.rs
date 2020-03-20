@@ -2,7 +2,7 @@ pub mod service;
 pub mod types;
 pub mod dipre;
 pub mod cooc;
-pub mod wikipedia_parser;
+pub mod wikitext;
 
 #[macro_use]
 extern crate lazy_static;
