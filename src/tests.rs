@@ -27,11 +27,16 @@ fn test_multiline_lists(){
 fn test_links(){
 
     // internal wikilinks
-    assert_eq!(wikipedia_parser::strip_markup("ab[[cd|ef]]hi"), "abcdhi");
-    assert_eq!(wikipedia_parser::strip_markup("ab[[cd|ef]]hi[[jkl]]mn[[o|pq]]rs"), "abcdhijklmnors");
+    assert_eq!(wikipedia_parser::strip_markup("ab[[cd|ef]]hi"), "abefhi");
+    assert_eq!(wikipedia_parser::strip_markup("ab[[cd]]hi"), "abcdhi");
+    assert_eq!(wikipedia_parser::strip_markup("ab[[#cd|ef]]hi"), "abefhi");
+    assert_eq!(wikipedia_parser::strip_markup("ab[[cd|ef]]hi[[#jkl]]mn[[o|pq]]rs"), "abefhijklmnpqrs");
 
     // file links
     assert_eq!(wikipedia_parser::strip_markup("ab[[File:cd|ef]]hi"), "abhi");
+    assert_eq!(wikipedia_parser::strip_markup("ab[[:File:cd|ef]]hi"), "abhi");
+    assert_eq!(wikipedia_parser::strip_markup("ab[[Media:cd|ef]]hi"), "abhi");
+    assert_eq!(wikipedia_parser::strip_markup("ab[[:Media:cd|ef]]hi"), "abhi");
     
 }
 

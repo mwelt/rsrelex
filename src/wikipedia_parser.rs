@@ -23,12 +23,15 @@ pub fn strip_markup(s: &str) -> String {
             (Regex::new(r"(\{\{(?P<c>[^}]*)\}\})").unwrap(), ""),
             // every wikimarkup {|...|}
             (Regex::new(r"(\{\|(?P<c>[^}]*)\|\})").unwrap(), ""),
-            // every File link 
-            (Regex::new(r"(\[\[(?P<c>File:[^]]*).*\]\])").unwrap(), ""),
-            // every Category link
-            (Regex::new(r"(\[\[(?P<c>Category:[^]]*).*\]\])").unwrap(), ""),
+
+            // every File, Media or Category link 
+            (Regex::new(r"(\[\[(?P<c>:?(File|Category|Media):[^]]*).*\]\])").unwrap(), ""),
+
             // modify wiki internal links
-            (Regex::new(r"(\[\[(?P<c>[^]|]*)\|?[^]]*\]\])").unwrap(), "$c"),
+            // (Regex::new(r"(\[\[#?(?P<c>[^]|]*)\|?[^]]*\]\])").unwrap(), "$c"),
+            (Regex::new(r"(\[\[#?(?P<c>[^]|]*)\]\])").unwrap(), "$c"),
+            (Regex::new(r"(\[\[#?[^|]*\|(?P<c>[^]]*)\]\])").unwrap(), "$c"),
+
             // headlines
             (Regex::new(r"(===== (?P<c>[^=]+) =====)").unwrap(), ""),
             (Regex::new(r"(==== (?P<c>[^=]+) ====)").unwrap(), ""),
