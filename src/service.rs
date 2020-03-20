@@ -1,5 +1,5 @@
 use super::types::{Env, DipreInput, AsyncLogger};
-use super::dipre::do_dipre;
+use super::relex::do_relex;
 use std::convert::Infallible;
 use std::net::SocketAddr;
 use std::sync::Arc;
@@ -46,7 +46,7 @@ async fn handle_client(_req: Request<Body>, env: Arc<Env>)
             let env = env.clone();
 
             let calc = async move {
-                do_dipre(di, env.as_ref(), logger).await;
+                do_relex(di, env.as_ref(), logger).await;
             };
 
             tokio::spawn(calc);

@@ -128,5 +128,3 @@ fn process_xml_file(file_name: &str, tag: &[u8], env: &mut Env, limit: Option<us
     println!("done reading file.");
     count
 }
-
-

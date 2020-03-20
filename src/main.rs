@@ -1,8 +1,6 @@
 pub mod service;
 pub mod types;
-// TODO rename to relex (RELation EXtraction)
 pub mod relex;
-//TODO rename to conex  (CONcept EXtraction)
 pub mod conex;
 pub mod wikitext;
 pub mod xml;
@@ -18,7 +16,6 @@ use xml::read_xml_and_persist_env;
 use std::env;
 
 use getopts::Options;
-
 
 fn bootstrap(dir: String) -> Env {
     println!("bootstraping.");
@@ -78,7 +75,8 @@ fn main() {
             }
             Some(d) => { d }
         };
-        read_xml_and_persist_env(&input_dir, &bin_file_dir, b"AbstractText", Option::None);
+        // read_xml_and_persist_env(&input_dir, &bin_file_dir, b"AbstractText", Option::Some(1000));
+        read_xml_and_persist_env(&input_dir, &bin_file_dir, b"text", Option::Some(1000));
     } else {
         let env = bootstrap(bin_file_dir);
 
@@ -124,7 +122,7 @@ fn main() {
                                         "UBC",
                                         "LAMP1",
                                         "CHMP3"]);
-        cooc::do_cooc(cooc_input, &env);
+        conex::do_conex(cooc_input, &env);
     }
 
     // let wpairs = vec![
