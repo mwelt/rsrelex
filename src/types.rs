@@ -16,6 +16,26 @@ pub type WordNr = u32;
 // consider Option instead of an artificial 'null'
 pub const EMPTY_WORD: u32 = std::u32::MAX;
 
+pub fn sanity_test(env: &Env){
+    // check if every dictionary word is associated with 
+    // an inverted index entry
+
+    let mut lost_words: Vec<WordNr> = Vec::new();
+
+    for w_nr in env.dict.dict.values() {
+        if ! env.inverted_idx.inverted_idx.contains_key(w_nr) {
+            lost_words.push(*w_nr);  
+        }
+    }
+
+    if ! lost_words.is_empty() {
+        println!("Words in dictionary without inverted_index entry:\n{:?}",
+               lost_words.iter().map(
+                   |w_nr| env.dict.get_word(w_nr)).collect::<Vec<&str>>());
+        panic!("Sanity check failed!");
+    }
+}
+
 pub fn build_directory_string(mut dir: String, bin_file: &str) -> String {
     if dir.chars().last().expect("Directory string empty.") != '/' {
         dir.push_str("/");
