@@ -1,9 +1,9 @@
 pub mod service;
 pub mod types;
 // TODO rename to relex (RELation EXtraction)
-pub mod dipre;
+pub mod relex;
 //TODO rename to conex  (CONcept EXtraction)
-pub mod cooc;
+pub mod conex;
 pub mod wikitext;
 pub mod xml;
 
