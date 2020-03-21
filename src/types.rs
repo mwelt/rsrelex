@@ -380,6 +380,22 @@ pub trait AsyncLogger {
     async fn log(&mut self, s: String) -> ();
 }
 
+pub struct DefaultLogger {
+}
+
+impl DefaultLogger {
+    pub fn new() -> DefaultLogger {
+        DefaultLogger {}
+    }
+}
+
+#[async_trait]
+impl AsyncLogger for DefaultLogger {
+    async fn log(&mut self, mut s: String) {
+        println!("{}", s);
+    }
+}
+
 #[derive(Debug)]
 pub struct CoocFst {
     pub word: WordNr,

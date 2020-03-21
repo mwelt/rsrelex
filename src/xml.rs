@@ -6,14 +6,20 @@ use unicode_segmentation::UnicodeSegmentation;
 use quick_xml::Reader;
 use quick_xml::events::Event;
 
-pub fn read_xml_and_persist_env(input_dir: &str, output_dir: &str, tag: &[u8], limit: Option<usize>) {
+pub fn read_xml_and_persist_env( 
+    input_dir: &str, 
+    output_dir: &str, 
+    tag: &[u8], 
+    limit: Option<usize>, 
+    preprocessor: Option<&dyn Fn(&str) -> String>) {
+
     println!("starting read_xml_and_persist_env.");
     println!("reading files from directory {}.", input_dir);
 
     let files = file_names_from_directory(input_dir)
         .expect("Unable to read file names from directory {}!");
 
-    let env = read_xmls_to_env(&files, tag, limit);
+    let env = read_xmls_to_env(&files, tag, limit, preprocessor);
 
     println!("done reading files from directory.");
     
@@ -43,20 +49,31 @@ fn file_names_from_directory(dir: &str) -> std::io::Result<Vec<String>> {
     Ok(r)
 }
 
-fn read_xmls_to_env(files: &Vec<String>, tag: &[u8], limit: Option<usize>) -> Env {
+fn read_xmls_to_env (
+    files: &[String], 
+    tag: &[u8], 
+    limit: Option<usize>, 
+    preprocessor: Option<&dyn Fn(&str) -> String>) -> Env {
 
     let mut env = Env::new();
     let mut count = 0usize;
 
     for file_name in files {
-        count += process_xml_file(&file_name, b"AbstractText", &mut env, limit.map(|l| l - count));
+        count += process_xml_file(&file_name, tag,
+            &mut env, limit.map(|l| l - count), preprocessor);
+
         if limit.is_some() && count >= limit.unwrap() { break; }
     }
 
     env
 }
 
-fn process_xml_file(file_name: &str, tag: &[u8], env: &mut Env, limit: Option<usize>) -> usize {
+fn process_xml_file(
+    file_name: &str, 
+    tag: &[u8], 
+    env: &mut Env, 
+    limit: Option<usize>,
+    preprocessor: Option<&dyn Fn(&str) -> String>) -> usize {
 
     let mut reader = Reader::from_file(file_name)
         .expect("Could not read from input file.");
@@ -76,6 +93,9 @@ fn process_xml_file(file_name: &str, tag: &[u8], env: &mut Env, limit: Option<us
             Ok(Event::Start(ref e)) => {
                 if tag == e.name() {
                     count+=1;
+                    if count % 100 == 0 {
+                        println!("count: {}", count);
+                    }
                     if limit.is_some() && count >= limit.unwrap() {
                         break;
                     }
@@ -85,6 +105,11 @@ fn process_xml_file(file_name: &str, tag: &[u8], env: &mut Env, limit: Option<us
 
             Ok(Event::End(ref e)) => {
                 if tag == e.name() {
+
+                    // optional preprocessor
+                    curr_str = if let Some(p_fn) = preprocessor {
+                        p_fn(&curr_str)
+                    } else { curr_str };
 
                     let mut sentences = curr_str.unicode_sentences()
                         .map(|sent| sent
