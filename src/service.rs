@@ -1,3 +1,4 @@
+use log::{info, error};
 use super::types::{Env, DipreInput, AsyncLogger};
 use super::relex::do_relex;
 use std::convert::Infallible;
@@ -18,11 +19,11 @@ struct ALogger {
 #[async_trait]
 impl AsyncLogger for ALogger {
     async fn log(&mut self, mut s: String) {
-        println!("{}", s);
+        info!("{}", s);
         s.push_str("\n");
         if self.conn_valid {
             if let Err(e) = self.sender.send_data(s.into()).await {
-                eprintln!("logging endpoint failed, marking connection as invalid: {}", e);
+                error!("logging endpoint failed, marking connection as invalid: {}", e);
                 self.conn_valid = false;
             }
         }
@@ -107,11 +108,11 @@ pub async fn run_server(env: Env){
     });
 
     let server = Server::bind(&addr).serve(make_svc);
-    println!("Starting server on port {}", port);
+    info!("Starting server on port {}", port);
 
     // let f = async {
         if let Err(e) = server.await {
-            eprintln!("server error: {}", e);
+            error!("server error: {}", e);
         }
     // };
 

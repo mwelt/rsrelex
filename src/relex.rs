@@ -1,6 +1,7 @@
 use super::types::{AsyncLogger, DipreInput, EMPTY_WORD,
 WordNr, SentenceId, Env, WPair, Pattern}; 
 
+use log::error;
 use std::collections::HashMap;
 use std::collections::HashSet;
 
@@ -125,11 +126,11 @@ fn find_matches_pattern(pattern: &Pattern, env: &Env) -> Vec<WPair> {
             if sent[idx2] == env.the {
                 if idx2 + 1 == sent.len() {
                     // there is "the" as the final word of a sentence?
-                    println!("Something strange in my neighbourhood! Call Ghost Busters!");
-                    println!("theres a sentence which ends with \"the\"! Let's take a look.");
-                    println!("{:?}", translate(&env.sentences.sentences[*s_id as usize], &env));
+                    error!("Something strange in my neighbourhood! Call Ghost Busters!");
+                    error!("theres a sentence which ends with \"the\"! Let's take a look.");
+                    error!("{:?}", translate(&env.sentences.sentences[*s_id as usize], &env));
                     for i in 1..4 {
-                        println!("{:?}", translate(&env.sentences.sentences[(s_id + i) as usize], &env));
+                        error!("{:?}", translate(&env.sentences.sentences[(s_id + i) as usize], &env));
                     }
                     EMPTY_WORD
                 } else {

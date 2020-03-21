@@ -1,5 +1,6 @@
 use super::types::{CoocInput, WordNr, CoocFst, Env}; 
 
+use log::{info, warn};
 use std::collections::HashMap;
 use std::collections::HashSet;
 
@@ -60,7 +61,7 @@ fn cooc_input_to_word_nr_set(cooc_input: &CoocInput, env: &Env)
         .map(|word_str| {
             let opt_word_nr = env.dict.get_opt_nr(word_str);
             if opt_word_nr.is_none() {
-                println!("Word \"{}\" not found in dictionary 
+                warn!("Word \"{}\" not found in dictionary 
                          - removing it from bootstrap set.", word_str);
             }
             opt_word_nr
@@ -101,19 +102,19 @@ pub fn do_conex(cooc_input: CoocInput, env: &Env) {
     //     }
     // };
 
-    println!("Converting input {:?} into set of word numbers", cooc_input);
+    info!("Converting input {:?} into set of word numbers", cooc_input);
     let bootstrap_set = cooc_input_to_word_nr_set(&cooc_input, &env);
-    println!("Done converting input into set of word numbers: {:?}",           
+    info!("Done converting input into set of word numbers: {:?}",           
              bootstrap_set);
 
     // let wpair_word_frequency_boost =
     //     COOC1_GLOBAL_TERM_FREQUENCY_BOOST_PER_SENTENCE / env.sentences.sentences.len() as f32;  
 
-    // println!("wpair_word_frequency_boost = {}", wpair_word_frequency_boost);
+    // info!("wpair_word_frequency_boost = {}", wpair_word_frequency_boost);
 
     let mut coocs_on_cooc_fst: HashMap<WordNr, CoocFst> = HashMap::new(); 
 
-    println!("Collecting syntagmatic context");
+    info!("Collecting syntagmatic context");
     for word in bootstrap_set {
         let coocs_for_word = cooccurrences_for_word(word, env);
         let mut already_word_frequency_boosted: HashSet<WordNr> = HashSet::new(); 
@@ -146,6 +147,6 @@ pub fn do_conex(cooc_input: CoocInput, env: &Env) {
         |(_, cooc_fst_a), (_, cooc_fst_b)| 
         cooc_fst_a.fitness.cmp(&cooc_fst_b.fitness));
 
-    println!("Done collecting syntagmatic context {:?}", coocs_on_cooc_fst);
+    info!("Done collecting syntagmatic context {:?}", coocs_on_cooc_fst);
 
 }

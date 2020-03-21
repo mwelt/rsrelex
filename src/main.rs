@@ -11,7 +11,8 @@ extern crate lazy_static;
 #[cfg(test)]
 mod tests;
 
-use types::{DefaultLogger, sanity_test, Env, DipreInput};
+use log::{info, error};
+use types::{DefaultLogger, soundness_test, Env, DipreInput};
 use xml::{read_xml_and_persist_env, PreprocessorFunction};
 use std::env;
 use relex::do_relex;
@@ -19,13 +20,13 @@ use std::collections::HashMap;
 use getopts::Options;
 
 fn bootstrap(dir: String) -> Env {
-    println!("bootstraping.");
+    info!("bootstraping.");
 
-    println!("start reading binary data.");
+    info!("start reading binary data.");
     let mut env = Env::deserialize(dir);
-    println!("done reading binary data.");
+    info!("done reading binary data.");
 
-    println!("{} sentences loaded, with {} distinct words."
+    info!("{} sentences loaded, with {} distinct words."
              , env.sentences.sentences.len(),
              env.dict.dict_vec.len()); 
 
@@ -44,11 +45,13 @@ fn print_usage(program: &str, opts: Options){
 async fn main() {
 // fn main() {
 
+    env_logger::init();
+
     let args: Vec<String> = env::args().collect(); 
     let program = args[0].clone();
 
     let mut opts = Options::new();
-    opts.optflag("s", "sanity", "test sanity of bin-files");
+    opts.optflag("s", "soundness", "test soundness of bin-files");
     opts.optopt("x", "import-xml", "import xml files from directory", "DIR");
     opts.optopt("t", "tag", "read specific tag from xml files.", "TAG");
     opts.optopt("l", "limit", "Limit the count of documents processed from all xml files.", "LIMIT");
@@ -81,14 +84,14 @@ async fn main() {
         };
 
         if ! matches.opt_present("t") {
-            eprintln!("If x option present t needs to be present as well!");
+            error!("If x option present t needs to be present as well!");
             print_usage(&program, opts);
             return;
         }
 
         let tag = match matches.opt_str("t") {
             None => {
-                eprintln!("If x option present t needs to be present as well!");
+                error!("If x option present t needs to be present as well!");
                 print_usage(&program, opts);
                 return;
             }
@@ -110,15 +113,15 @@ async fn main() {
                 let p_ = preprocessors.get(&p);
 
                 if p_.is_some() {
-                    println!("using preprocessor {}.", p);
+                    info!("using preprocessor {}.", p);
                 } else {
-                    println!("not using preprocessor.");
+                    info!("not using preprocessor.");
                 }
 
                 p_
             })
         } else {
-            println!("not using preprocessor.");
+            info!("not using preprocessor.");
             Option::None
         };
 
@@ -133,9 +136,9 @@ async fn main() {
         let env = bootstrap(bin_file_dir);
 
         if matches.opt_present("s") {
-            println!("Starting sanity test.");
-            sanity_test(&env);
-            println!("Done sanity test.");
+            info!("Starting soundness test.");
+            soundness_test(&env);
+            info!("Done soundness test.");
         }
 
         let wpairs = vec! [
@@ -146,7 +149,7 @@ async fn main() {
         ];
 
         let json = DipreInput::new(wpairs).serialize();
-        println!("Json: {}", json);
+        info!("Json: {}", json);
         do_relex(DipreInput::deserialize(&json), &env, DefaultLogger::new()).await;
 
         // service::run_server(env).await;    

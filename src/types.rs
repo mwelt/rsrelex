@@ -1,6 +1,7 @@
 use serde::{Serialize, Deserialize};
 use serde::de::DeserializeOwned;
 
+use log::{info, error};
 use std::collections::HashMap;
 use std::collections::HashSet;
 
@@ -16,7 +17,7 @@ pub type WordNr = u32;
 // consider Option instead of an artificial 'null'
 pub const EMPTY_WORD: u32 = std::u32::MAX;
 
-pub fn sanity_test(env: &Env){
+pub fn soundness_test(env: &Env){
     // check if every dictionary word is associated with 
     // an inverted index entry
 
@@ -29,7 +30,7 @@ pub fn sanity_test(env: &Env){
     }
 
     if ! lost_words.is_empty() {
-        println!("Words in dictionary without inverted_index entry:\n{:?}",
+        error!("Words in dictionary without inverted_index entry:\n{:?}",
                lost_words.iter().map(
                    |w_nr| env.dict.get_word(w_nr)).collect::<Vec<&str>>());
         panic!("Sanity check failed!");
@@ -51,7 +52,7 @@ pub fn serialize_with_directory<T: Serialize>(selfs: &T, dir: String,
 
 pub fn serialize<T: Serialize>(selfs: &T, bin_file: &str) {
 
-    println!("start writing binary file {}.", bin_file);
+    info!("start writing binary file {}.", bin_file);
 
     let mut f = BufWriter::new(
         File::create(bin_file)
@@ -59,7 +60,7 @@ pub fn serialize<T: Serialize>(selfs: &T, bin_file: &str) {
 
     serialize_into(&mut f, selfs).unwrap();
 
-    println!("done writing binary file.");
+    info!("done writing binary file.");
 
 }
 
@@ -70,14 +71,14 @@ pub fn deserialize_with_directory<T: DeserializeOwned>(
 
 pub fn deserialize<T: DeserializeOwned>(bin_file: &str) -> T {
 
-    println!("start reading binary file {}.", bin_file);
+    info!("start reading binary file {}.", bin_file);
 
     let mut f = BufReader::new(
         File::open(bin_file).unwrap());
 
     let o = deserialize_from(&mut f).unwrap();
 
-    println!("done reading binary file.");
+    info!("done reading binary file.");
 
     o 
 }
@@ -116,7 +117,7 @@ impl WPair {
     }
 
     pub fn println(&self, env: &Env) {
-        println!("fitness: {}, w1: {}, w2: {}",
+        info!("fitness: {}, w1: {}, w2: {}",
                  self.fitness,
                  if self.w1 == EMPTY_WORD { "empty" }
                  else { &env.dict.get_word(&self.w1) },
@@ -155,7 +156,7 @@ impl Pattern {
     }
 
     pub fn println(&self, env: &Env) {
-        println!("fitness: {}, prefix: {}, infix: {:?}, suffix: {}, order: {}",
+        info!("fitness: {}, prefix: {}, infix: {:?}, suffix: {}, order: {}",
                  self.fitness,
 
                  if self.prefix == EMPTY_WORD { "empty" }
@@ -175,7 +176,7 @@ impl Pattern {
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Default)]
 pub struct InvertedIndex {
     pub inverted_idx: HashMap<WordNr, HashSet<SentenceId>>,
 }
@@ -199,7 +200,7 @@ impl InvertedIndex {
 
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Default)]
 pub struct Sentences {
     pub sentences: Vec<Vec<WordNr>>
 }
@@ -223,7 +224,7 @@ impl Sentences {
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Default)]
 pub struct Dict {
     pub dict_vec: Vec<String>,
     pub dict: HashMap<String, WordNr>,
@@ -262,6 +263,7 @@ impl Dict {
     }
 }
 
+#[derive(Default)]
 pub struct Env {
     pub sentences: Sentences,
     pub inverted_idx: InvertedIndex,
@@ -380,6 +382,7 @@ pub trait AsyncLogger {
     async fn log(&mut self, s: String) -> ();
 }
 
+#[derive(Default)]
 pub struct DefaultLogger {
 }
 
@@ -392,7 +395,7 @@ impl DefaultLogger {
 #[async_trait]
 impl AsyncLogger for DefaultLogger {
     async fn log(&mut self, s: String) {
-        println!("{}", s);
+        info!("{}", s);
     }
 }
 

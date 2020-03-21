@@ -1,5 +1,6 @@
-use super::types::{SentenceId, Env, sanity_test};
+use super::types::{SentenceId, Env, soundness_test};
 
+use log::info;
 use std::fs::{read_dir};
 
 use unicode_segmentation::UnicodeSegmentation;
@@ -15,28 +16,28 @@ pub fn read_xml_and_persist_env(
     limit: Option<usize>, 
     preprocessor: Option<&PreprocessorFunction>) {
 
-    println!("starting read_xml_and_persist_env.");
-    println!("reading files from directory {}.", input_dir);
+    info!("starting read_xml_and_persist_env.");
+    info!("reading files from directory {}.", input_dir);
 
     let files = file_names_from_directory(input_dir)
         .expect("Unable to read file names from directory {}!");
 
     let env = read_xmls_to_env(&files, tag, limit, preprocessor);
 
-    println!("done reading files from directory.");
+    info!("done reading files from directory.");
     
-    println!("{} sentences loaded, with {} distinct words."
+    info!("{} sentences loaded, with {} distinct words."
              , env.sentences.sentences.len(), env.dict.dict_vec.len()); 
 
-    println!("Starting sanity test.");
-    sanity_test(&env);
-    println!("Done sanity test.");
+    info!("Starting soundness test.");
+    soundness_test(&env);
+    info!("Done soundness test.");
 
-    println!("starting writing binary files.");
+    info!("starting writing binary files.");
     env.serialize(output_dir.to_owned());
-    println!("done writing binary files.");
+    info!("done writing binary files.");
 
-    println!("done read_and_serialize_xmls.");
+    info!("done read_and_serialize_xmls.");
 
 }
 
@@ -87,7 +88,7 @@ fn process_xml_file(
     let mut curr_str = String::new();
     let mut count = 0usize;
 
-    println!("Start reading file {}", file_name);
+    info!("Start reading file {}", file_name);
 
     loop {
         match reader.read_event(&mut buf) {
@@ -96,7 +97,7 @@ fn process_xml_file(
                 if tag == e.name() {
                     count+=1;
                     if count % 100 == 0 {
-                        println!("count: {}", count);
+                        info!("count: {}", count);
                     }
                     if limit.is_some() && count >= limit.unwrap() {
                         break;
@@ -152,6 +153,6 @@ fn process_xml_file(
         buf.clear();
     }
 
-    println!("done reading file.");
+    info!("done reading file.");
     count
 }
