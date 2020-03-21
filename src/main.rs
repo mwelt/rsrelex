@@ -12,10 +12,10 @@ extern crate lazy_static;
 mod tests;
 
 use types::{DefaultLogger, sanity_test, Env, DipreInput};
-use xml::read_xml_and_persist_env;
+use xml::{read_xml_and_persist_env, PreprocessorFunction};
 use std::env;
 use relex::do_relex;
-// use std::collections::HashMap;
+use std::collections::HashMap;
 use getopts::Options;
 
 fn bootstrap(dir: String) -> Env {
@@ -100,23 +100,25 @@ async fn main() {
             matches.opt_str("l").and_then(|l| l.parse().ok()) 
         } else { Option::None };
 
-        // let preprocessors: HashMap<String, &dyn Fn(&str) -> String> = 
-        //     HashMap::new();
+        let mut preprocessors: HashMap<String, PreprocessorFunction> = 
+            HashMap::new();
 
-        // preprocessors.insert("wikitext::strip_markup".into(), 
-        //     &wikitext::strip_markup);
+        preprocessors.insert("wikitext::strip_markup".into(), wikitext::strip_markup);
 
-        let preprocessor: Option<&dyn Fn(&str) -> String> = if matches.opt_present("p") {
-            matches.opt_str("p")
-                .and_then(|p| {
-                    if p == "wikitext::strip_markup" {
-                        println!("using wikitext::strip_markup as preprocessor");
-                        Option::Some(&wikitext::strip_markup as &dyn Fn(&str) -> String)
-                    } else {
-                        Option::None
-                    }
-                })
+        let preprocessor = if matches.opt_present("p") {
+            matches.opt_str("p").and_then(|p| {
+                let p_ = preprocessors.get(&p);
+
+                if p_.is_some() {
+                    println!("using preprocessor {}.", p);
+                } else {
+                    println!("not using preprocessor.");
+                }
+
+                p_
+            })
         } else {
+            println!("not using preprocessor.");
             Option::None
         };
 
@@ -142,6 +144,7 @@ async fn main() {
             ("animal", "cat"),
             ("animal", "dog")
         ];
+
         let json = DipreInput::new(wpairs).serialize();
         println!("Json: {}", json);
         do_relex(DipreInput::deserialize(&json), &env, DefaultLogger::new()).await;

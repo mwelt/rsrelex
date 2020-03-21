@@ -391,7 +391,7 @@ impl DefaultLogger {
 
 #[async_trait]
 impl AsyncLogger for DefaultLogger {
-    async fn log(&mut self, mut s: String) {
+    async fn log(&mut self, s: String) {
         println!("{}", s);
     }
 }

@@ -6,12 +6,14 @@ use unicode_segmentation::UnicodeSegmentation;
 use quick_xml::Reader;
 use quick_xml::events::Event;
 
+pub type PreprocessorFunction = fn(&str) -> String;
+
 pub fn read_xml_and_persist_env( 
     input_dir: &str, 
     output_dir: &str, 
     tag: &[u8], 
     limit: Option<usize>, 
-    preprocessor: Option<&dyn Fn(&str) -> String>) {
+    preprocessor: Option<&PreprocessorFunction>) {
 
     println!("starting read_xml_and_persist_env.");
     println!("reading files from directory {}.", input_dir);
@@ -53,7 +55,7 @@ fn read_xmls_to_env (
     files: &[String], 
     tag: &[u8], 
     limit: Option<usize>, 
-    preprocessor: Option<&dyn Fn(&str) -> String>) -> Env {
+    preprocessor: Option<&PreprocessorFunction>) -> Env {
 
     let mut env = Env::new();
     let mut count = 0usize;
@@ -73,7 +75,7 @@ fn process_xml_file(
     tag: &[u8], 
     env: &mut Env, 
     limit: Option<usize>,
-    preprocessor: Option<&dyn Fn(&str) -> String>) -> usize {
+    preprocessor: Option<&PreprocessorFunction>) -> usize {
 
     let mut reader = Reader::from_file(file_name)
         .expect("Could not read from input file.");
