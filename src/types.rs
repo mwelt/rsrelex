@@ -413,8 +413,34 @@ impl CoocFst {
     }
 }
 
+impl Clone for CoocFst {
+   fn clone(&self) -> CoocFst {
+        CoocFst {
+            word: self.word,
+            fitness: self.fitness
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct CoocSnd {
-    word: WordNr,
-    fitness: i16
+   pub word: WordNr,
+   pub fitness: isize
+}
+
+impl CoocSnd {
+    pub fn new(word: WordNr, fitness: isize) -> CoocSnd {
+        CoocSnd {
+            word, fitness
+        }
+    }
+}
+
+impl Clone for CoocSnd {
+   fn clone(&self) -> CoocSnd {
+        CoocSnd {
+            word: self.word,
+            fitness: self.fitness
+        }
+    }
 }

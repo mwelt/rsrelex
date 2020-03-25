@@ -1,4 +1,4 @@
-use super::types::{CoocInput, WordNr, CoocFst, Env}; 
+use super::types::{CoocInput, WordNr, CoocFst, CoocSnd, Env}; 
 
 use log::{info, warn};
 use std::collections::HashMap;
@@ -11,6 +11,19 @@ const COOC1_SET_FREQUENCY_BOOST: isize = 0;
 // overall termfrequency i.e. how many sentences contain this term
 // const COOC1_GLOBAL_TERM_FREQUENCY_BOOST_PER_SENTENCE: f32 = -100.0;
 const COOC1_GLOBAL_TERM_FREQUENCY_BOOST_PER_SENTENCE: isize = -1;
+
+const COOC1_SURVIVOR_THRESHOLD: isize = 100;
+
+// how many cooc1 do cooccurr with that cooc2?
+const COOC2_COOC1_FREQUENCY_BOOST: isize = 50;
+
+// how frequent is this cooc2 in the whole cooc1 set
+const COOC2_SET_FREQUENCY_BOOST: isize = 0;
+
+// overall termfrequency i.e. how many sentences contain this term
+const COOC2_GLOBAL_TERM_FREQUENCY_BOOST_PER_SENTENCE: isize = -1;
+
+const COOC2_SURVIVOR_THRESHOLD: isize = 100;
 
 // // pattern was found for one or more wpairs 
 // const PATTERN_WPAIR_BOOST: i16 = 10;
@@ -139,14 +152,78 @@ pub fn do_conex(cooc_input: CoocInput, env: &Env) {
 
     }
 
-    let mut coocs_on_cooc_fst: Vec<(&str, &CoocFst)> =
-        coocs_on_cooc_fst.iter().map(
-            |(word_nr, cooc_fst)| (env.dict.get_word(word_nr), cooc_fst)).collect();
+    // let mut coocs_on_cooc_fst: Vec<(&str, &CoocFst)> =
+    //     coocs_on_cooc_fst.iter().map(
+    //         |(word_nr, cooc_fst)| (env.dict.get_word(word_nr), cooc_fst)).collect();
 
-    coocs_on_cooc_fst.sort_unstable_by(
-        |(_, cooc_fst_a), (_, cooc_fst_b)| 
-        cooc_fst_a.fitness.cmp(&cooc_fst_b.fitness));
+    // coocs_on_cooc_fst.sort_unstable_by(
+    //     |(_, cooc_fst_a), (_, cooc_fst_b)| 
+    //     cooc_fst_a.fitness.cmp(&cooc_fst_b.fitness));
 
-    info!("Done collecting syntagmatic context {:?}", coocs_on_cooc_fst);
+    // info!("Done collecting syntagmatic context {:?}", coocs_on_cooc_fst);
+    info!("Done collecting syntagmatic context.");
+    
+    let l1 = coocs_on_cooc_fst.len();
 
+    // filter by COOC1_FITNESS_THRESHOLD
+    let mut cooc_fsts: Vec<CoocFst> = coocs_on_cooc_fst.iter()
+        .filter(|(_, c)| c.fitness >= COOC1_SURVIVOR_THRESHOLD)
+        .map(|(_, c)| (*c).clone())
+        .collect();
+
+    info!("{} from {} syntagmatic coocs left after applying threshold of {}",
+        cooc_fsts.len(), l1, COOC1_SURVIVOR_THRESHOLD); 
+
+    // cooc_fsts.sort_unstable_by(
+    //     |a, b| 
+    //     a.fitness.cmp(&b.fitness));
+
+    // info!("{:?}", cooc_fsts.iter().map(|c| 
+    //         (env.dict.get_word(&c.word), c.fitness)).collect::<Vec<(&str, isize)>>());
+    
+    let mut coocs_on_cooc_snd: HashMap<WordNr, CoocSnd> = HashMap::new(); 
+
+    info!("Collecting paradigmatic context");
+    for cooc in cooc_fsts {
+        let coocs_for_word = cooccurrences_for_word(cooc.word, env);
+        let mut already_cooc_frequency_boosted: HashSet<WordNr> = HashSet::new(); 
+
+        for (cooc, count) in coocs_for_word {
+            let mut cooc_snd = coocs_on_cooc_snd.entry(cooc)
+                .or_insert({
+                     let freq_boost = env.get_inverted_idx(&cooc).len() as isize
+                         * COOC2_GLOBAL_TERM_FREQUENCY_BOOST_PER_SENTENCE; 
+                    // let freq_boost = env.get_inverted_idx(&cooc).len() as f32 
+                    //     * wpair_word_frequency_boost;
+                    // let freq_boost = save_cast(freq_boost, cooc);
+                    CoocSnd::new(cooc,freq_boost)});
+                
+            if ! already_cooc_frequency_boosted.contains(&cooc) {
+                cooc_snd.fitness += COOC2_COOC1_FREQUENCY_BOOST;
+                already_cooc_frequency_boosted.insert(cooc);
+            }
+
+            cooc_snd.fitness += count * COOC2_SET_FREQUENCY_BOOST;
+        }
+
+    }
+    info!("Done collecting paradigmatic context.");
+   
+    let l2 = coocs_on_cooc_snd.len();
+    
+    // filter by COOC2_FITNESS_THRESHOLD
+    let mut cooc_snds: Vec<CoocSnd> = coocs_on_cooc_snd.iter()
+        .filter(|(_, c)| c.fitness >= COOC2_SURVIVOR_THRESHOLD)
+        .map(|(_, c)| (*c).clone())
+        .collect();
+
+    info!("{} from {} paradigmatic coocs left after applying threshold of {}",
+        cooc_snds.len(), l2, COOC2_SURVIVOR_THRESHOLD); 
+
+    cooc_snds.sort_unstable_by(
+        |a, b| 
+        a.fitness.cmp(&b.fitness));
+
+    info!("{:?}", cooc_snds.iter().map(|c| 
+            (env.dict.get_word(&c.word), c.fitness)).collect::<Vec<(&str, isize)>>());
 }

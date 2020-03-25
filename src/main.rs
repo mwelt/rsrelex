@@ -12,10 +12,11 @@ extern crate lazy_static;
 mod tests;
 
 use log::{info, error};
-use types::{DefaultLogger, soundness_test, Env, DipreInput};
+use types::{DefaultLogger, CoocInput, soundness_test, Env, DipreInput};
 use xml::{read_xml_and_persist_env, PreprocessorFunction};
 use std::env;
 use relex::do_relex;
+use conex::do_conex;
 use std::collections::HashMap;
 use getopts::Options;
 
@@ -141,16 +142,27 @@ async fn main() {
             info!("Done soundness test.");
         }
 
-        let wpairs = vec! [
-            ("organs", "liver"),
-            ("organs", "lung"),
-            ("animal", "cat"),
-            ("animal", "dog")
+        // let wpairs = vec! [
+        //     ("organs", "liver"),
+        //     ("organs", "lung"),
+        //     ("animal", "cat"),
+        //     ("animal", "dog")
+        // ];
+
+        // let json = DipreInput::new(wpairs).serialize();
+        // info!("Json: {}", json);
+        // do_relex(DipreInput::deserialize(&json), &env, DefaultLogger::new()).await;
+       
+        let set = vec! [
+            "London",
+            "Berlin",
+            "Madrid",
+            "Lima"
         ];
 
-        let json = DipreInput::new(wpairs).serialize();
-        info!("Json: {}", json);
-        do_relex(DipreInput::deserialize(&json), &env, DefaultLogger::new()).await;
+        info!("{:?}", set);
+        let json = CoocInput::new(set);
+        do_conex(json, &env);
 
         // service::run_server(env).await;    
     }
