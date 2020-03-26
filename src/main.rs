@@ -4,6 +4,7 @@ pub mod relex;
 pub mod conex;
 pub mod wikitext;
 pub mod xml;
+pub mod pso;
 
 #[macro_use]
 extern crate lazy_static;
