@@ -10,7 +10,9 @@ pub mod pso;
 extern crate lazy_static;
 
 #[cfg(test)]
-mod tests;
+mod wikitext_tests;
+#[cfg(test)]
+mod pso_tests;
 
 use log::{info, error};
 use types::{DefaultLogger, CoocInput, soundness_test, Env, DipreInput};
