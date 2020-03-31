@@ -1,26 +1,9 @@
 use super::pso::*;
 // use rand::random;
 use std::fs::write;
+use assert_approx_eq::assert_approx_eq;
 
-// #[test]
-// fn test_update_velocity(){
-//     let len = 2;
-//     let mut swarm = Swarm::new (
-//         2,
-//         vec![
-//         (-100f64,100f64),
-//         (-100f64,100f64)
-//         ],
-//         1.2f64,
-//         1.2f64,
-//         2f64);
-//     println!("{:?}", swarm);
-//     swarm.update_velocity();
-//     println!("{:?}", swarm);
-// }
-
-#[test]
-fn test_swarm_init() {
+fn init_swarm() -> Swarm {
     let fitness_fn: FitnessFn = |pos| vec![pos[0]/10.0, pos[1]/10.0];
 
     let position_bounds: Vec<Bound> = vec![
@@ -38,7 +21,7 @@ fn test_swarm_init() {
     // optimization of [x/10, y/10] with 
     // x to max and y to min -> should yield  
     // optimal pareto of [0,0]
-    let mut swarm = Swarm::new(
+    Swarm::new(
         100,
         1.0,
         1.0,
@@ -47,38 +30,11 @@ fn test_swarm_init() {
         fitness_bounds,
         vec![true, false],
         fitness_fn
-    );
+    )
+}
 
-    // first, check if all initialized particles
-    // are in the range of fitness landscape
-    for particle in swarm.particles.iter() {
-        for (i, (l, h)) in swarm.position_bounds.iter().enumerate() {
-            assert_eq!(true, particle.position[i] >= *l);
-            assert_eq!(true, particle.position[i] <= *h);
-        }
-    }
-
-    // double check pareto front 
-    let particle_fitnesss: Vec<&Fitness> = swarm.particles.iter()
-        .map(|p| &p.fitness).collect();
-
-    let pareto_fitnesss: Vec<&Fitness> = pareto_front(
-        &particle_fitnesss,
-        &swarm.fitness_pareto_directions).iter()
-        .map(|i| particle_fitnesss[*i])
-        .collect();
-
-    for f in pareto_fitnesss.iter() {
-        let mut is_dominated = false;
-        for f_ in pareto_fitnesss.iter() {
-            if dominates(f_, f, &swarm.fitness_pareto_directions){
-                is_dominated = true;
-                break;
-            }
-        }
-        assert_eq!(false, is_dominated);
-    }
-
+fn test_leader_pareto(swarm: &Swarm){
+    
     // check if leader fitness is really pareto optimal
     for leader in swarm.leaders.iter() {
         let mut is_dominated = false;
@@ -92,27 +48,67 @@ fn test_swarm_init() {
         
         assert_eq!(false, is_dominated);
     }
+}
 
+fn write_swarm_dat(swarm: &Swarm, file_name_prefix: &str, 
+    file_name_suffix: &str, write_fitness: bool) {
+    
+    // write updated movement data
     let particle_positions: Vec<&Position> = swarm.particles.iter()
         .map(|p| &p.position).collect();
-    write("swarm_init_particles.dat", 
+    write([file_name_prefix, "sp_", file_name_suffix, ".dat"].join(""), 
         points_to_string_(&particle_positions)).unwrap();
 
     let leaders_positions: Vec<&Position> = swarm.leaders.iter()
         .map(|l| &l.position).collect();
 
-    write("swarm_init_leaders.dat", 
+    write([file_name_prefix, "spl_", file_name_suffix, ".dat"].join(""), 
         points_to_string_(&leaders_positions)).unwrap();
 
-    let particle_fitnesss: Vec<&Fitness> = swarm.particles.iter()
-        .map(|p| &p.fitness).collect();
-    write("swarm_init_particle_fitnesss.dat", 
-        points_to_string_(&particle_fitnesss)).unwrap();
+    if write_fitness {
+        // write updated fitness data
+        let particle_fitnesss: Vec<&Fitness> = swarm.particles.iter()
+            .map(|p| &p.fitness).collect();
+        write([file_name_prefix, "sf_", file_name_suffix, ".dat"].join(""), 
+            points_to_string_(&particle_fitnesss)).unwrap();
 
-    let leader_fitnesss: Vec<&Fitness> = swarm.leaders.iter()
-        .map(|l| &l.fitness).collect();
-    write("swarm_init_leader_fitnesss.dat",
+        let leader_fitnesss: Vec<&Fitness> = swarm.leaders.iter()
+            .map(|l| &l.fitness).collect();
+        write([file_name_prefix, "sfl_", file_name_suffix, ".dat"].join(""),
         points_to_string_(&leader_fitnesss)).unwrap();
+    }
+}
+
+fn on_iteration(i: usize, swarm: &Swarm){
+    // check if all leader are pareto for each step
+    test_leader_pareto(swarm);
+    write_swarm_dat(swarm, "fly_test/", &i.to_string(), false);
+}
+
+#[test]
+fn test_swarm_fly() {
+    let mut swarm = init_swarm();
+    write_swarm_dat(&swarm, "fly_test/", "0", false);
+    swarm.fly(100, on_iteration);
+}
+
+#[test]
+fn test_swarm_init() {
+
+    let swarm = init_swarm();
+    
+    // first, check if all initialized particles
+    // are in the range of fitness landscape
+    for particle in swarm.particles.iter() {
+        for (i, (l, h)) in swarm.position_bounds.iter().enumerate() {
+            assert_eq!(true, particle.position[i] >= *l);
+            assert_eq!(true, particle.position[i] <= *h);
+        }
+    }
+
+    test_leader_pareto(&swarm);
+
+    write_swarm_dat(&swarm, "", "init", true); 
     
 }
 
@@ -166,9 +162,10 @@ fn test_pareto_front() {
     write("domination_front.dat", points_to_string(&pareto_front)).unwrap();
 }
 
-// #[test]
-// fn text_random_float(){
-//     for _ in 0..100 {
-//         println!("{}", rand::random::<f64>());
-//     }
-// }
+#[test]
+fn test_distance(){
+    assert_approx_eq!(0f64, distance(&[0.0, 0.0], &[0.0, 0.0]));
+    assert_approx_eq!(2f64.sqrt(), distance(&[0.0, 0.0], &[1.0, 1.0]));
+    assert_approx_eq!(2f64.sqrt(), distance(&[0.0, 0.0], &[-1.0, 1.0]));
+}
+

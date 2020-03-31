@@ -116,6 +116,7 @@ impl Swarm {
         swarm
     }
 
+    // TODO slow with too much mem copy
     pub fn select_new_leaders(&mut self){
 
         let mut potential_leaders: Vec<Leader> = Vec::with_capacity(
@@ -139,27 +140,6 @@ impl Swarm {
         pareto_idxs.iter().for_each(|i| 
             self.leaders.push(potential_leaders[*i].clone()));
 
-
-        // for p in self.particles.iter() {
-        //     self.leaders.push(Leader {
-        //         position: p.position.clone(),
-        //         fitness: p.fitness.clone(),
-        //         quality: 0f64
-        //     });
-        // }
-
-        // let fitnesss: Vec<&Fitness> = 
-        //     self.leaders.iter().map(|l| &l.fitness).collect();
-
-        // let pareto_front_idxs = pareto_front(&fitnesss, 
-        //     &self.fitness_pareto_directions); 
-
-        // let mut new_leaders = Vec::with_capacity(pareto_front_idxs.len());
-        // for idx in pareto_front_idxs {
-        //     new_leaders.push(self.leaders[idx].clone());
-        // }
-
-        // self.leaders = new_leaders;
     }
 
     pub fn qualify_leaders(&mut self) {
@@ -198,7 +178,7 @@ impl Swarm {
                     + c1r1 * (particle.best_position[i] - *x_i)  
                     + c2r2 * (particle_leader[i] - *x_i);
 
-                *x_i += velocity[i];
+                *x_i = velocity[i];
             }
             particle.velocity = velocity;
 
@@ -212,6 +192,19 @@ impl Swarm {
                 particle.best_position = particle.position.clone();
                 particle.best_fitness = fitness;
             }
+        }
+
+    }
+
+    pub fn fly(&mut self, 
+        iterations: usize,
+        on_iteration: fn(i: usize, &Swarm) -> ()) {
+
+        for i in 0..iterations {
+            self.update_particles();
+            self.select_new_leaders();
+            self.qualify_leaders();
+            on_iteration(i, self);
         }
 
     }
@@ -305,3 +298,14 @@ pub fn pareto_front(xs: &[&Fitness], directions: &[ParetoDirection]) -> Vec<usiz
     pareto_front
 }
 
+// TODO quadratic cubic distance?
+pub fn distance(x: &[f64], y: &[f64]) -> f64 {
+
+    let mut sum = 0f64;
+    for i in 0..x.len() {
+        let d = y[i] - x[i];
+        sum += d*d; 
+    }
+
+    sum.sqrt()
+}
