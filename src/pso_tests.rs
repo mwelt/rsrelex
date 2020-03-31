@@ -1,5 +1,5 @@
-use super::pso::{pareto_front, dominates, Particle, Swarm};
-use rand::random;
+use super::pso::{pareto_front};
+// use rand::random;
 use std::fs::write;
 
 // #[test]
@@ -41,6 +41,8 @@ fn test_pareto_front() {
     }
 
     write("domination_base.dat", points_to_string(&points)).unwrap();
+
+    let points: Vec<&Vec<f64>> = points.iter().map(|p| p).collect();
 
     let pareto_front = pareto_front(&points, &[true, false]);
     let pareto_front: Vec<Vec<f64>> = pareto_front.iter()
