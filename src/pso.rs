@@ -3,19 +3,19 @@ use rand::Rng;
 use rand::rngs::ThreadRng;
 use rand::distributions::{Distribution, Uniform};
 
-type Position = Vec<f64>;
-type Velocity = Vec<f64>;
-type Fitness = Vec<f64>;
-type Quality = f64;
-type ParetoDirection = bool;
-type Bound = (f64, f64);
-type FitnessFn = fn(&Position) -> Fitness;
+pub type Position = Vec<f64>;
+pub type Velocity = Vec<f64>;
+pub type Fitness = Vec<f64>;
+pub type Quality = f64;
+pub type ParetoDirection = bool;
+pub type Bound = (f64, f64);
+pub type FitnessFn = fn(&Position) -> Fitness;
 
 #[derive(Clone)]
 pub struct Leader {
-    position: Position, 
-    fitness: Fitness, 
-    quality: Quality
+    pub position: Position, 
+    pub fitness: Fitness, 
+    pub quality: Quality
 }
 
 pub struct Swarm {
@@ -47,7 +47,7 @@ impl Swarm {
 
     pub fn generate_random_particles(
         num_particles: usize, 
-        uniform_distributions: Vec<Uniform<f64>>,
+        uniform_distributions: &Vec<Uniform<f64>>,
         fitness_fn: FitnessFn,
         rng: &mut ThreadRng) -> Vec<Particle> {
 
@@ -59,7 +59,7 @@ impl Swarm {
 
             let mut initial_pos = Vec::with_capacity(dim_position);
             for i in 0..dim_position {
-                initial_pos[i] = uniform_distributions[i].sample(rng); 
+                initial_pos.push(uniform_distributions[i].sample(rng)); 
             }
             let initial_fitness = fitness_fn(&initial_pos);
             
@@ -95,7 +95,7 @@ impl Swarm {
 
         // generate some particles (fitness is evaluated)
         let particles = Swarm::generate_random_particles(
-            num_particles, uniform_distribution, fitness_fn, &mut rng);
+            num_particles, &uniform_distribution, fitness_fn, &mut rng);
 
         let mut swarm = Swarm {
             learning_cognitive,
@@ -117,26 +117,49 @@ impl Swarm {
     }
 
     pub fn select_new_leaders(&mut self){
-        for p in self.particles.iter() {
-            self.leaders.push(Leader {
-                position: p.position.clone(),
-                fitness: p.fitness.clone(),
-                quality: 0f64
-            });
-        }
 
-        let fitnesss: Vec<&Fitness> = 
-            self.leaders.iter().map(|l| &l.fitness).collect();
+        let mut potential_leaders: Vec<Leader> = Vec::with_capacity(
+            self.leaders.len() + self.particles.len());
 
-        let pareto_front_idxs = pareto_front(&fitnesss, 
-            &self.fitness_pareto_directions); 
+        self.leaders.iter().for_each(|l| potential_leaders.push(l.clone()));
+        self.particles.iter().for_each(|p| potential_leaders.push(
+                Leader {
+                    position: p.position.clone(),
+                    fitness: p.fitness.clone(),
+                    quality: 0f64
+                }));
+        
+        let fitness_values: Vec<&Fitness> = potential_leaders.iter()
+            .map(|l| &l.fitness).collect();
 
-        let mut new_leaders = Vec::with_capacity(pareto_front_idxs.len());
-        for idx in pareto_front_idxs {
-            new_leaders.push(self.leaders[idx].clone());
-        }
+        let pareto_idxs = pareto_front(&fitness_values,
+            &self.fitness_pareto_directions);
 
-        self.leaders = new_leaders;
+        self.leaders.clear();
+        pareto_idxs.iter().for_each(|i| 
+            self.leaders.push(potential_leaders[*i].clone()));
+
+
+        // for p in self.particles.iter() {
+        //     self.leaders.push(Leader {
+        //         position: p.position.clone(),
+        //         fitness: p.fitness.clone(),
+        //         quality: 0f64
+        //     });
+        // }
+
+        // let fitnesss: Vec<&Fitness> = 
+        //     self.leaders.iter().map(|l| &l.fitness).collect();
+
+        // let pareto_front_idxs = pareto_front(&fitnesss, 
+        //     &self.fitness_pareto_directions); 
+
+        // let mut new_leaders = Vec::with_capacity(pareto_front_idxs.len());
+        // for idx in pareto_front_idxs {
+        //     new_leaders.push(self.leaders[idx].clone());
+        // }
+
+        // self.leaders = new_leaders;
     }
 
     pub fn qualify_leaders(&mut self) {
@@ -250,23 +273,34 @@ pub fn dominates(x: &[f64], y: &[f64], directions: &[bool]) -> bool {
 }
 
 pub fn pareto_front(xs: &[&Fitness], directions: &[ParetoDirection]) -> Vec<usize> {
-    let len = xs.len();
     let mut pareto_front: Vec<usize> = Vec::new();
-    
-    for i in 0..len {
+
+    for (i, x) in xs.iter().enumerate() {
         let mut is_dominated = false;
-        let p = &xs[i];
-        for j in (i+1)..len {
-            if dominates(&xs[j], &p, directions) {
+        for y in xs.iter() {
+            if dominates(y, x, directions){
                 is_dominated = true;
                 break;
             }
         }
-
-        if !is_dominated {
+        if ! is_dominated {
             pareto_front.push(i);
         }
     }
+    // for i in 0..len {
+    //     let mut is_dominated = false;
+    //     let p = &xs[i];
+    //     for j in 0..len {
+    //         if dominates(&xs[j], &p, directions) {
+    //             is_dominated = true;
+    //             break;
+    //         }
+    //     }
+
+    //     if !is_dominated {
+    //         pareto_front.push(i);
+    //     }
+    // }
 
     pareto_front
 }
