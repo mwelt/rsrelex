@@ -23,9 +23,9 @@ fn init_swarm() -> Swarm {
     // optimal pareto of [0,0]
     Swarm::new(
         100,
-        1.0,
-        1.0,
-        2.0,
+        0.1,
+        0.1,
+        0.2,
         position_bounds,
         fitness_bounds,
         vec![true, false],
@@ -47,6 +47,15 @@ fn test_leader_pareto(swarm: &Swarm){
         }
         
         assert_eq!(false, is_dominated);
+    }
+}
+
+fn test_particles_in_bounds(swarm: &Swarm) {
+    for particle in swarm.particles.iter() {
+        for (i, x_i) in particle.position.iter().enumerate() {
+            assert!(*x_i >= swarm.position_bounds[i].0);
+            assert!(*x_i <= swarm.position_bounds[i].1);
+        }
     }
 }
 
@@ -82,7 +91,8 @@ fn write_swarm_dat(swarm: &Swarm, file_name_prefix: &str,
 fn on_iteration(i: usize, swarm: &Swarm){
     // check if all leader are pareto for each step
     test_leader_pareto(swarm);
-    write_swarm_dat(swarm, "fly_test/", &i.to_string(), false);
+    test_particles_in_bounds(swarm);
+    write_swarm_dat(swarm, "fly_test/", &(i+1).to_string(), false);
 }
 
 #[test]

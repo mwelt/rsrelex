@@ -169,6 +169,7 @@ impl Swarm {
             let particle_leader = 
                 Swarm::select_next_leader(&self.leaders, &mut rng);
             for (i, x_i) in particle.position.iter_mut().enumerate() {
+
                 let c1r1:f64 = 
                     self.learning_cognitive * rng.gen::<f64>();
                 let c2r2:f64 = 
@@ -178,7 +179,11 @@ impl Swarm {
                     + c1r1 * (particle.best_position[i] - *x_i)  
                     + c2r2 * (particle_leader[i] - *x_i);
 
-                *x_i = velocity[i];
+                *x_i += velocity[i];
+
+                let (l, h) = self.position_bounds[i];
+                *x_i = l.max(*x_i); 
+                *x_i = h.min(*x_i);
             }
             particle.velocity = velocity;
 
