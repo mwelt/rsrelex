@@ -15,7 +15,8 @@ pub type FitnessFn = fn(&Position) -> Fitness;
 pub struct Leader {
     pub position: Position, 
     pub fitness: Fitness, 
-    pub quality: Quality
+    pub quality: Quality,
+    pub rank: usize
 }
 
 pub struct Swarm {
@@ -127,7 +128,8 @@ impl Swarm {
                 Leader {
                     position: p.position.clone(),
                     fitness: p.fitness.clone(),
-                    quality: 0f64
+                    quality: 0f64,
+                    rank: 0usize
                 }));
         
         let fitness_values: Vec<&Fitness> = potential_leaders.iter()
@@ -142,8 +144,68 @@ impl Swarm {
 
     }
 
+    
+    // Diversity Management via crowding-distance 
     pub fn qualify_leaders(&mut self) {
-        // TODO implement cubic distance qualification
+
+        let len = self.leaders.len();
+
+        // first initialize the distance vector
+        // can not use self.leaders[i].quality directly, bc.
+        // borrowing the fitness values already 
+        let mut distances: Vec<f64> = Vec::with_capacity(self.leaders.len());
+
+        let mut leaders_tmp: Vec<(usize, &Fitness)> = 
+            self.leaders.iter().enumerate()
+            .map(|(i, l)| (i, &l.fitness)).collect();
+
+        for (d, (l, h)) in self.fitness_bounds.iter().enumerate() {
+
+            let bound_dist = h - l;
+
+            leaders_tmp.sort_unstable_by(|(_, l1), (_, l2)| {
+                if let Some(ordering) = 
+                    l1[d].partial_cmp(&l2[d]) {
+                        ordering
+                    } else {
+                        std::cmp::Ordering::Equal
+                }
+            });
+
+            let (fst, _) = leaders_tmp[0];
+            let (lst, _) = leaders_tmp[len - 1];
+
+            distances[fst] = std::f64::MAX;
+            distances[lst] = std::f64::MAX;
+
+            // iterate over second to second last
+            for i in 1..(len - 2) {
+                // index of current leader in distances vec
+                let (j, _) = leaders_tmp[i];
+                // prev and next in sorted by d'th dimension
+                let (_, leader_prev) = leaders_tmp[i-1];
+                let (_, leader_next) = leaders_tmp[i+1]; 
+
+                distances[j] += (leader_next[d] - leader_prev[d]) / bound_dist;  
+                
+            }
+
+        }
+
+        for (i, leader) in self.leaders.iter_mut().enumerate() {
+            leader.quality = distances[i];
+        }
+
+        //sort the leaders 
+        self.leaders.sort_unstable_by(|l1, l2| {
+            if let Some(ordering) = 
+                l1.quality.partial_cmp(&l2.quality) {
+                    ordering
+                } else {
+                    std::cmp::Ordering::Equal
+            }
+        });
+
     }
 
     pub fn select_next_leader<'a>(leaders: &'a [Leader], 
