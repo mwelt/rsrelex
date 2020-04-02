@@ -6,7 +6,6 @@ use rand::distributions::{Distribution, Uniform};
 pub type Position = Vec<f64>;
 pub type Velocity = Vec<f64>;
 pub type Fitness = Vec<f64>;
-pub type Quality = f64;
 pub type ParetoDirection = bool;
 pub type Bound = (f64, f64);
 pub type FitnessFn = fn(&Position) -> Fitness;
@@ -15,7 +14,7 @@ pub type FitnessFn = fn(&Position) -> Fitness;
 pub struct Leader {
     pub position: Position, 
     pub fitness: Fitness, 
-    pub quality: Quality,
+    pub crowding_distance: f64,
     pub rank: usize
 }
 
@@ -48,7 +47,7 @@ impl Swarm {
 
     pub fn generate_random_particles(
         num_particles: usize, 
-        uniform_distributions: &Vec<Uniform<f64>>,
+        uniform_distributions: &[Uniform<f64>],
         fitness_fn: FitnessFn,
         rng: &mut ThreadRng) -> Vec<Particle> {
 
@@ -59,8 +58,8 @@ impl Swarm {
         for _ in 0..num_particles {
 
             let mut initial_pos = Vec::with_capacity(dim_position);
-            for i in 0..dim_position {
-                initial_pos.push(uniform_distributions[i].sample(rng)); 
+            for d in uniform_distributions.iter() {
+                initial_pos.push(d.sample(rng)); 
             }
             let initial_fitness = fitness_fn(&initial_pos);
             
@@ -128,7 +127,7 @@ impl Swarm {
                 Leader {
                     position: p.position.clone(),
                     fitness: p.fitness.clone(),
-                    quality: 0f64,
+                    crowding_distance: 0f64,
                     rank: 0usize
                 }));
         
@@ -151,9 +150,9 @@ impl Swarm {
         let len = self.leaders.len();
 
         // first initialize the distance vector
-        // can not use self.leaders[i].quality directly, bc.
+        // can not use self.leaders[i].crowding_distance directly, bc.
         // borrowing the fitness values already 
-        let mut distances: Vec<f64> = Vec::with_capacity(self.leaders.len());
+        let mut distances: Vec<f64> = vec![0f64; self.leaders.len()];
 
         let mut leaders_tmp: Vec<(usize, &Fitness)> = 
             self.leaders.iter().enumerate()
@@ -179,7 +178,7 @@ impl Swarm {
             distances[lst] = std::f64::MAX;
 
             // iterate over second to second last
-            for i in 1..(len - 2) {
+            for i in 1..(len - 1) {
                 // index of current leader in distances vec
                 let (j, _) = leaders_tmp[i];
                 // prev and next in sorted by d'th dimension
@@ -193,18 +192,24 @@ impl Swarm {
         }
 
         for (i, leader) in self.leaders.iter_mut().enumerate() {
-            leader.quality = distances[i];
+            leader.crowding_distance = distances[i];
         }
 
         //sort the leaders 
         self.leaders.sort_unstable_by(|l1, l2| {
             if let Some(ordering) = 
-                l1.quality.partial_cmp(&l2.quality) {
+                l1.crowding_distance.partial_cmp(&l2.crowding_distance) {
                     ordering
                 } else {
                     std::cmp::Ordering::Equal
             }
         });
+
+        // apply rank to the leaders short crowding distance means
+        // crowded neighborhood -> lower rank
+        for (i, leader) in self.leaders.iter_mut().enumerate() {
+            leader.rank = len - i;
+        }
 
     }
 

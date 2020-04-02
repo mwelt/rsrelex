@@ -118,7 +118,10 @@ fn test_swarm_init() {
 
     test_leader_pareto(&swarm);
 
-    write_swarm_dat(&swarm, "", "init", true); 
+    for l in swarm.leaders.iter() {
+        println!("({}, {:?}, {})", l.rank, l.fitness, l.crowding_distance);
+    }
+    // write_swarm_dat(&swarm, "", "init", true); 
     
 }
 
