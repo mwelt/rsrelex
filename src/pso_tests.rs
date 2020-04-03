@@ -1,10 +1,11 @@
 use super::pso::*;
-// use rand::random;
 use std::fs::write;
 use assert_approx_eq::assert_approx_eq;
 
+
 fn init_swarm() -> Swarm {
     let fitness_fn: FitnessFn = |pos| vec![pos[0]/10.0, pos[1]/10.0];
+    // let fitness_fn: FitnessFn = |pos| vec![pos[0].sin(), pos[1].cos()];
 
     let position_bounds: Vec<Bound> = vec![
         (-100.0, 100.0),
@@ -22,10 +23,10 @@ fn init_swarm() -> Swarm {
     // x to max and y to min -> should yield  
     // optimal pareto of [0,0]
     Swarm::new(
-        100,
+        50,
         0.1,
         0.1,
-        0.2,
+        0.02,
         position_bounds,
         fitness_bounds,
         vec![true, false],
@@ -121,6 +122,7 @@ fn test_swarm_init() {
     for l in swarm.leaders.iter() {
         println!("({}, {:?}, {})", l.rank, l.fitness, l.crowding_distance);
     }
+    println!("rank sum: {}", swarm.rank_sum);
     // write_swarm_dat(&swarm, "", "init", true); 
     
 }

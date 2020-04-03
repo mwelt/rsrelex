@@ -29,6 +29,7 @@ pub struct Swarm {
     pub fitness_pareto_directions: Vec<ParetoDirection>,
     pub fitness_fn: FitnessFn,
     pub leaders: Vec<Leader>,
+    pub rank_sum: usize,
     pub particles: Vec<Particle>
 }
 
@@ -108,11 +109,12 @@ impl Swarm {
             fitness_pareto_directions,
             fitness_fn,
             leaders: Vec::new(), 
+            rank_sum: 0usize,
             particles,
         };
 
         swarm.select_new_leaders();
-        swarm.qualify_leaders();
+        swarm.pareto_crowding_distance();
         swarm
     }
 
@@ -145,7 +147,7 @@ impl Swarm {
 
     
     // Diversity Management via crowding-distance 
-    pub fn qualify_leaders(&mut self) {
+    pub fn pareto_crowding_distance(&mut self) {
 
         let len = self.leaders.len();
 
@@ -207,21 +209,28 @@ impl Swarm {
 
         // apply rank to the leaders short crowding distance means
         // crowded neighborhood -> lower rank
+        let mut sum_rk = 0usize;
         for (i, leader) in self.leaders.iter_mut().enumerate() {
-            leader.rank = len - i;
+            // leader.rank = len - i;
+            leader.rank = i + 1;
+            sum_rk += leader.rank;
         }
+
+        self.rank_sum = sum_rk;
 
     }
 
-    pub fn select_next_leader<'a>(leaders: &'a [Leader], 
+    pub fn select_next_leader<'a>(leaders: &'a [Leader], sum_rk: usize,
         rng: &mut ThreadRng) -> &'a Vec<f64> {
         
         // TODO choose leader by qualification 
         // the better the qualification the more likely 
         // shall be the selection ... see initialzing for 
         // k-means 
-        let rng_leader = leaders.choose(rng)
-            .expect("unable to choose random next leader");
+        // let rng_leader = leaders.choose(rng)
+        //     .expect("unable to choose random next leader");
+        let rng_leader = leaders.choose_weighted(rng, |l| l.rank as f64 / sum_rk as f64)
+            .expect("Can not choose next leader weighted.");
         &rng_leader.position  
     }
 
@@ -234,7 +243,7 @@ impl Swarm {
         for particle in self.particles.iter_mut() {
             let mut velocity = vec![0f64; self.position_dim];
             let particle_leader = 
-                Swarm::select_next_leader(&self.leaders, &mut rng);
+                Swarm::select_next_leader(&self.leaders, self.rank_sum, &mut rng);
             for (i, x_i) in particle.position.iter_mut().enumerate() {
 
                 let c1r1:f64 = 
@@ -275,7 +284,7 @@ impl Swarm {
         for i in 0..iterations {
             self.update_particles();
             self.select_new_leaders();
-            self.qualify_leaders();
+            self.pareto_crowding_distance();
             on_iteration(i, self);
         }
 
