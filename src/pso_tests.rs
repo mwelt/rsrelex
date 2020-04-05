@@ -1,6 +1,6 @@
 use super::pso::*;
 use std::fs::write;
-use assert_approx_eq::assert_approx_eq;
+// use assert_approx_eq::assert_approx_eq;
 
 
 fn init_swarm() -> Swarm {
@@ -177,10 +177,10 @@ fn test_pareto_front() {
     write("domination_front.dat", points_to_string(&pareto_front)).unwrap();
 }
 
-#[test]
-fn test_distance(){
-    assert_approx_eq!(0f64, distance(&[0.0, 0.0], &[0.0, 0.0]));
-    assert_approx_eq!(2f64.sqrt(), distance(&[0.0, 0.0], &[1.0, 1.0]));
-    assert_approx_eq!(2f64.sqrt(), distance(&[0.0, 0.0], &[-1.0, 1.0]));
-}
+// #[test]
+// fn test_distance(){
+//     assert_approx_eq!(0f64, distance(&[0.0, 0.0], &[0.0, 0.0]));
+//     assert_approx_eq!(2f64.sqrt(), distance(&[0.0, 0.0], &[1.0, 1.0]));
+//     assert_approx_eq!(2f64.sqrt(), distance(&[0.0, 0.0], &[-1.0, 1.0]));
+// }
 

@@ -4,26 +4,79 @@ use log::{info, warn};
 use std::collections::HashMap;
 use std::collections::HashSet;
 
-// how many bootstrap words share this cooc
-const COOC1_WORD_FREQUENCY_BOOST: isize = 50;
-// how frequent is this cooc overall w.r.t bootstrap set
-const COOC1_SET_FREQUENCY_BOOST: isize = 0;
-// overall termfrequency i.e. how many sentences contain this term
-// const COOC1_GLOBAL_TERM_FREQUENCY_BOOST_PER_SENTENCE: f32 = -100.0;
-const COOC1_GLOBAL_TERM_FREQUENCY_BOOST_PER_SENTENCE: isize = -1;
+pub struct ConexHyperParameter {
+    // how many bootstrap words share this cooc
+    cooc1_word_frequency_boost: f64 ,
+    // how frequent is this cooc overall w.r.t bootstrap set
+    cooc1_set_frequency_boost: f64 ,
+    // overall termfrequency i.e. how many sentences contain this term
+    //  COOC1_GLOBAL_TERM_FREQUENCY_BOOST_PER_SENTENCE: f32 ,
+    cooc1_global_term_frequency_boost_per_sentence: f64,
 
-const COOC1_SURVIVOR_THRESHOLD: isize = 100;
+    cooc1_survivor_threshold: f64 ,
 
-// how many cooc1 do cooccurr with that cooc2?
-const COOC2_COOC1_FREQUENCY_BOOST: isize = 50;
+    // how many cooc1 do cooccurr with that cooc2?
+    cooc2_cooc1_frequency_boost: f64 ,
 
-// how frequent is this cooc2 in the whole cooc1 set
-const COOC2_SET_FREQUENCY_BOOST: isize = 0;
+    // how frequent is this cooc2 in the whole cooc1 set
+    cooc2_set_frequency_boost: f64 ,
 
-// overall termfrequency i.e. how many sentences contain this term
-const COOC2_GLOBAL_TERM_FREQUENCY_BOOST_PER_SENTENCE: isize = -1;
+    // overall termfrequency i.e. how many sentences contain this term
+    cooc2_global_term_frequency_boost_per_sentence: f64 ,
 
-const COOC2_SURVIVOR_THRESHOLD: isize = 100;
+    cooc2_survivor_threshold: f64 
+}
+
+impl ConexHyperParameter {
+    pub fn from_vector(v: Vec<f64>) -> ConexHyperParameter {
+        ConexHyperParameter {
+            cooc1_word_frequency_boost: v[0],
+            cooc1_set_frequency_boost:  v[1],
+            cooc1_global_term_frequency_boost_per_sentence:  v[2],
+            cooc1_survivor_threshold:  v[3],
+            cooc2_cooc1_frequency_boost:  v[4],
+            cooc2_set_frequency_boost:  v[5],
+            cooc2_global_term_frequency_boost_per_sentence:  v[6],
+            cooc2_survivor_threshold: v[6] 
+        }
+    }
+
+    pub fn to_vector(&self) -> Vec<f64> {
+        vec![
+            self.cooc1_word_frequency_boost,
+            self.cooc1_set_frequency_boost,
+            self.cooc1_global_term_frequency_boost_per_sentence,
+            self.cooc1_survivor_threshold,
+            self.cooc2_cooc1_frequency_boost,
+            self.cooc2_set_frequency_boost,
+            self.cooc2_global_term_frequency_boost_per_sentence,
+            self.cooc2_survivor_threshold 
+        ]
+    }
+}
+
+pub const DEFAULT_CONEX_HYPER_PARAMETER: ConexHyperParameter = ConexHyperParameter {
+    // how many bootstrap words share this cooc
+    cooc1_word_frequency_boost:  50.0,
+    // how frequent is this cooc overall w.r.t bootstrap set
+    cooc1_set_frequency_boost:  0.0,
+    // overall termfrequency i.e. how many sentences contain this term
+    //  COOC1_GLOBAL_TERM_FREQUENCY_BOOST_PER_SENTENCE: f32 = -100.0,
+    cooc1_global_term_frequency_boost_per_sentence:  -1.0,
+
+    cooc1_survivor_threshold:  100.0,
+
+    // how many cooc1 do cooccurr with that cooc2?
+    cooc2_cooc1_frequency_boost:  50.0,
+
+    // how frequent is this cooc2 in the whole cooc1 set
+    cooc2_set_frequency_boost:  0.0,
+
+    // overall termfrequency i.e. how many sentences contain this term
+    cooc2_global_term_frequency_boost_per_sentence:  -1.0,
+
+    cooc2_survivor_threshold:  100.0
+};
 
 // // pattern was found for one or more wpairs 
 // const PATTERN_WPAIR_BOOST: i16 = 10;
@@ -99,7 +152,10 @@ fn cooc_input_to_word_nr_set(cooc_input: &CoocInput, env: &Env)
 //     term_frequency: usize
 // }
 
-pub fn do_conex(cooc_input: CoocInput, env: &Env) {
+pub fn do_conex(
+    cooc_input: CoocInput,
+    hyper_params: ConexHyperParameter, 
+    env: &Env) {
 
     // this can get seriously wrong if the numbers outgrow
     // i16::MIN, but if this happens our fitness score
@@ -135,19 +191,19 @@ pub fn do_conex(cooc_input: CoocInput, env: &Env) {
         for (cooc, count) in coocs_for_word {
             let mut cooc_fst = coocs_on_cooc_fst.entry(cooc)
                 .or_insert({
-                     let freq_boost = env.get_inverted_idx(&cooc).len() as isize
-                         * COOC1_GLOBAL_TERM_FREQUENCY_BOOST_PER_SENTENCE; 
+                     let freq_boost = env.get_inverted_idx(&cooc).len() as f64 
+                         * hyper_params.cooc1_global_term_frequency_boost_per_sentence; 
                     // let freq_boost = env.get_inverted_idx(&cooc).len() as f32 
                     //     * wpair_word_frequency_boost;
                     // let freq_boost = save_cast(freq_boost, cooc);
                     CoocFst::new(cooc,freq_boost)});
                 
             if ! already_word_frequency_boosted.contains(&cooc) {
-                cooc_fst.fitness += COOC1_WORD_FREQUENCY_BOOST;
+                cooc_fst.fitness += hyper_params.cooc1_word_frequency_boost;
                 already_word_frequency_boosted.insert(cooc);
             }
 
-            cooc_fst.fitness += count * COOC1_SET_FREQUENCY_BOOST;
+            cooc_fst.fitness += count as f64 * hyper_params.cooc1_set_frequency_boost;
         }
 
     }
@@ -167,12 +223,12 @@ pub fn do_conex(cooc_input: CoocInput, env: &Env) {
 
     // filter by COOC1_FITNESS_THRESHOLD
     let mut cooc_fsts: Vec<CoocFst> = coocs_on_cooc_fst.iter()
-        .filter(|(_, c)| c.fitness >= COOC1_SURVIVOR_THRESHOLD)
+        .filter(|(_, c)| c.fitness >= hyper_params.cooc1_survivor_threshold)
         .map(|(_, c)| (*c).clone())
         .collect();
 
     info!("{} from {} syntagmatic coocs left after applying threshold of {}",
-        cooc_fsts.len(), l1, COOC1_SURVIVOR_THRESHOLD); 
+        cooc_fsts.len(), l1, hyper_params.cooc1_survivor_threshold); 
 
     // cooc_fsts.sort_unstable_by(
     //     |a, b| 
@@ -191,19 +247,19 @@ pub fn do_conex(cooc_input: CoocInput, env: &Env) {
         for (cooc, count) in coocs_for_word {
             let mut cooc_snd = coocs_on_cooc_snd.entry(cooc)
                 .or_insert({
-                     let freq_boost = env.get_inverted_idx(&cooc).len() as isize
-                         * COOC2_GLOBAL_TERM_FREQUENCY_BOOST_PER_SENTENCE; 
+                     let freq_boost = env.get_inverted_idx(&cooc).len() as f64 
+                         * hyper_params.cooc2_global_term_frequency_boost_per_sentence; 
                     // let freq_boost = env.get_inverted_idx(&cooc).len() as f32 
                     //     * wpair_word_frequency_boost;
                     // let freq_boost = save_cast(freq_boost, cooc);
                     CoocSnd::new(cooc,freq_boost)});
                 
             if ! already_cooc_frequency_boosted.contains(&cooc) {
-                cooc_snd.fitness += COOC2_COOC1_FREQUENCY_BOOST;
+                cooc_snd.fitness += hyper_params.cooc2_cooc1_frequency_boost;
                 already_cooc_frequency_boosted.insert(cooc);
             }
 
-            cooc_snd.fitness += count * COOC2_SET_FREQUENCY_BOOST;
+            cooc_snd.fitness += count as f64 * hyper_params.cooc2_set_frequency_boost;
         }
 
     }
@@ -213,17 +269,23 @@ pub fn do_conex(cooc_input: CoocInput, env: &Env) {
     
     // filter by COOC2_FITNESS_THRESHOLD
     let mut cooc_snds: Vec<CoocSnd> = coocs_on_cooc_snd.iter()
-        .filter(|(_, c)| c.fitness >= COOC2_SURVIVOR_THRESHOLD)
+        .filter(|(_, c)| c.fitness >= hyper_params.cooc2_survivor_threshold)
         .map(|(_, c)| (*c).clone())
         .collect();
 
     info!("{} from {} paradigmatic coocs left after applying threshold of {}",
-        cooc_snds.len(), l2, COOC2_SURVIVOR_THRESHOLD); 
+        cooc_snds.len(), l2, hyper_params.cooc2_survivor_threshold); 
 
     cooc_snds.sort_unstable_by(
-        |a, b| 
-        a.fitness.cmp(&b.fitness));
+        |a, b| { 
+            if let Some(ordering) = 
+                a.fitness.partial_cmp(&b.fitness) {
+                    ordering
+                } else {
+                    std::cmp::Ordering::Equal
+            }
+        });
 
     info!("{:?}", cooc_snds.iter().map(|c| 
-            (env.dict.get_word(&c.word), c.fitness)).collect::<Vec<(&str, isize)>>());
+            (env.dict.get_word(&c.word), c.fitness)).collect::<Vec<(&str, f64)>>());
 }

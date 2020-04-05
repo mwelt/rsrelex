@@ -380,13 +380,13 @@ pub fn pareto_front(xs: &[&Fitness], directions: &[ParetoDirection]) -> Vec<usiz
 }
 
 // TODO quadratic cubic distance?
-pub fn distance(x: &[f64], y: &[f64]) -> f64 {
+// pub fn distance(x: &[f64], y: &[f64]) -> f64 {
 
-    let mut sum = 0f64;
-    for i in 0..x.len() {
-        let d = y[i] - x[i];
-        sum += d*d; 
-    }
+//     let mut sum = 0f64;
+//     for i in 0..x.len() {
+//         let d = y[i] - x[i];
+//         sum += d*d; 
+//     }
 
-    sum.sqrt()
-}
+//     sum.sqrt()
+// }

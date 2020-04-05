@@ -13,6 +13,8 @@ extern crate lazy_static;
 mod wikitext_tests;
 #[cfg(test)]
 mod pso_tests;
+#[cfg(test)]
+mod tests;
 
 use log::{info, error};
 use types::{DefaultLogger, CoocInput, soundness_test, Env, DipreInput};
@@ -165,7 +167,7 @@ async fn main() {
 
         info!("{:?}", set);
         let json = CoocInput::new(set);
-        do_conex(json, &env);
+        do_conex(json, conex::DEFAULT_CONEX_HYPER_PARAMETER, &env);
 
         // service::run_server(env).await;    
     }

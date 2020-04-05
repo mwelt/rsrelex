@@ -402,11 +402,11 @@ impl AsyncLogger for DefaultLogger {
 #[derive(Debug)]
 pub struct CoocFst {
     pub word: WordNr,
-    pub fitness: isize
+    pub fitness: f64 
 }
 
 impl CoocFst {
-    pub fn new(word: WordNr, fitness: isize) -> CoocFst {
+    pub fn new(word: WordNr, fitness: f64) -> CoocFst {
         CoocFst {
             word, fitness
         }
@@ -425,11 +425,11 @@ impl Clone for CoocFst {
 #[derive(Debug)]
 pub struct CoocSnd {
    pub word: WordNr,
-   pub fitness: isize
+   pub fitness: f64 
 }
 
 impl CoocSnd {
-    pub fn new(word: WordNr, fitness: isize) -> CoocSnd {
+    pub fn new(word: WordNr, fitness: f64) -> CoocSnd {
         CoocSnd {
             word, fitness
         }
@@ -443,4 +443,32 @@ impl Clone for CoocSnd {
             fitness: self.fitness
         }
     }
+}
+
+// struct RetrivalStats<'a> {
+//     positives: &'a[WordNr],
+//     true_positives: &'a[WordNr],
+//     false_positives: &'a[WordNr],
+//     false_negatives: &'a[WordNr],
+//     precision: f64,
+//     recall: f64
+// }
+
+pub fn calc_precision_recall(
+    retrival_erg: &[WordNr],
+    reference: &[WordNr]) -> (f64, f64) {
+
+    let retrival_erg: HashSet<&WordNr> = retrival_erg.iter().collect();
+    let reference: HashSet<&WordNr> = reference.iter().collect();
+
+    let true_positives: HashSet<_> = retrival_erg.intersection(&reference).collect();
+    // let false_positives = retrival_erg.difference(&true_positives)
+    //     .map(|x| *x).collect();
+    // let false_negatives = reference.difference(&true_positives)
+    //     .map(|x| *x).collect();
+
+    let precision = true_positives.len() as f64 / retrival_erg.len() as f64;
+    let recall = true_positives.len() as f64 / reference.len() as f64;
+
+    (precision, recall)
 }
