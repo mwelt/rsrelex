@@ -454,21 +454,3 @@ impl Clone for CoocSnd {
 //     recall: f64
 // }
 
-pub fn calc_precision_recall(
-    retrival_erg: &[WordNr],
-    reference: &[WordNr]) -> (f64, f64) {
-
-    let retrival_erg: HashSet<&WordNr> = retrival_erg.iter().collect();
-    let reference: HashSet<&WordNr> = reference.iter().collect();
-
-    let true_positives: HashSet<_> = retrival_erg.intersection(&reference).collect();
-    // let false_positives = retrival_erg.difference(&true_positives)
-    //     .map(|x| *x).collect();
-    // let false_negatives = reference.difference(&true_positives)
-    //     .map(|x| *x).collect();
-
-    let precision = true_positives.len() as f64 / retrival_erg.len() as f64;
-    let recall = true_positives.len() as f64 / reference.len() as f64;
-
-    (precision, recall)
-}

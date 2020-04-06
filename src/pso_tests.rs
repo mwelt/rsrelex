@@ -2,9 +2,11 @@ use super::pso::*;
 use std::fs::write;
 // use assert_approx_eq::assert_approx_eq;
 
+fn default_fitness_fn(pos: &Position) -> Vec<f64>{
+    vec![pos[0]/10.0, pos[1]/10.0]
+}
 
-fn init_swarm() -> Swarm {
-    let fitness_fn: FitnessFn = |pos| vec![pos[0]/10.0, pos[1]/10.0];
+fn init_swarm<'a>(fitness_fn: &'a FitnessFn) -> Swarm {
     // let fitness_fn: FitnessFn = |pos| vec![pos[0].sin(), pos[1].cos()];
 
     let position_bounds: Vec<Bound> = vec![
@@ -98,7 +100,7 @@ fn on_iteration(i: usize, swarm: &Swarm){
 
 #[test]
 fn test_swarm_fly() {
-    let mut swarm = init_swarm();
+    let mut swarm = init_swarm(&default_fitness_fn);
     write_swarm_dat(&swarm, "fly_test/", "0", false);
     swarm.fly(100, on_iteration);
 }
@@ -106,7 +108,7 @@ fn test_swarm_fly() {
 #[test]
 fn test_swarm_init() {
 
-    let swarm = init_swarm();
+    let swarm = init_swarm(&default_fitness_fn);
     
     // first, check if all initialized particles
     // are in the range of fitness landscape

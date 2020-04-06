@@ -8,7 +8,7 @@ pub type Velocity = Vec<f64>;
 pub type Fitness = Vec<f64>;
 pub type ParetoDirection = bool;
 pub type Bound = (f64, f64);
-pub type FitnessFn = fn(&Position) -> Fitness;
+pub type FitnessFn = dyn Fn(&Position) -> Fitness;
 
 #[derive(Clone)]
 pub struct Leader {
@@ -18,7 +18,7 @@ pub struct Leader {
     pub rank: usize
 }
 
-pub struct Swarm {
+pub struct Swarm<'a> {
     pub learning_cognitive: f64,
     pub learning_social: f64,   
     pub inertia: f64,
@@ -27,13 +27,13 @@ pub struct Swarm {
     pub fitness_bounds: Vec<Bound>,
     pub fitness_dim: usize,
     pub fitness_pareto_directions: Vec<ParetoDirection>,
-    pub fitness_fn: FitnessFn,
+    pub fitness_fn: &'a FitnessFn,
     pub leaders: Vec<Leader>,
     pub rank_sum: usize,
     pub particles: Vec<Particle>
 }
 
-impl ToString for Swarm {
+impl ToString for Swarm<'_> {
     fn to_string(&self) -> String {
         [
             "Swarm:",
@@ -44,12 +44,12 @@ impl ToString for Swarm {
     }
 }
 
-impl Swarm {
+impl Swarm<'_> {
 
     pub fn generate_random_particles(
         num_particles: usize, 
         uniform_distributions: &[Uniform<f64>],
-        fitness_fn: FitnessFn,
+        fitness_fn: &FitnessFn,
         rng: &mut ThreadRng) -> Vec<Particle> {
 
         let mut particles: Vec<Particle> = Vec::with_capacity(num_particles);
@@ -71,7 +71,7 @@ impl Swarm {
         particles
     }
 
-    pub fn new(
+    pub fn new<'a>(
         num_particles: usize,
         learning_cognitive: f64,
         learning_social: f64,
@@ -79,7 +79,7 @@ impl Swarm {
         position_bounds: Vec<Bound>,
         fitness_bounds: Vec<Bound>,
         fitness_pareto_directions: Vec<ParetoDirection>,
-        fitness_fn: fn(&Position) -> Fitness) -> Swarm {
+        fitness_fn: &'a FitnessFn) -> Swarm {
 
         // get random generator
         let mut rng = rand::thread_rng();

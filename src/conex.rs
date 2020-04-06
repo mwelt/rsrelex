@@ -153,9 +153,9 @@ fn cooc_input_to_word_nr_set(cooc_input: &CoocInput, env: &Env)
 // }
 
 pub fn do_conex(
-    cooc_input: CoocInput,
-    hyper_params: ConexHyperParameter, 
-    env: &Env) {
+    cooc_input: &CoocInput,
+    hyper_params: &ConexHyperParameter, 
+    env: &Env) -> Vec<WordNr> {
 
     // this can get seriously wrong if the numbers outgrow
     // i16::MIN, but if this happens our fitness score
@@ -222,7 +222,7 @@ pub fn do_conex(
     let l1 = coocs_on_cooc_fst.len();
 
     // filter by COOC1_FITNESS_THRESHOLD
-    let mut cooc_fsts: Vec<CoocFst> = coocs_on_cooc_fst.iter()
+    let cooc_fsts: Vec<CoocFst> = coocs_on_cooc_fst.iter()
         .filter(|(_, c)| c.fitness >= hyper_params.cooc1_survivor_threshold)
         .map(|(_, c)| (*c).clone())
         .collect();
@@ -268,7 +268,7 @@ pub fn do_conex(
     let l2 = coocs_on_cooc_snd.len();
     
     // filter by COOC2_FITNESS_THRESHOLD
-    let mut cooc_snds: Vec<CoocSnd> = coocs_on_cooc_snd.iter()
+    let cooc_snds: Vec<CoocSnd> = coocs_on_cooc_snd.iter()
         .filter(|(_, c)| c.fitness >= hyper_params.cooc2_survivor_threshold)
         .map(|(_, c)| (*c).clone())
         .collect();
@@ -276,16 +276,18 @@ pub fn do_conex(
     info!("{} from {} paradigmatic coocs left after applying threshold of {}",
         cooc_snds.len(), l2, hyper_params.cooc2_survivor_threshold); 
 
-    cooc_snds.sort_unstable_by(
-        |a, b| { 
-            if let Some(ordering) = 
-                a.fitness.partial_cmp(&b.fitness) {
-                    ordering
-                } else {
-                    std::cmp::Ordering::Equal
-            }
-        });
+    // cooc_snds.sort_unstable_by(
+    //     |a, b| { 
+    //         if let Some(ordering) = 
+    //             a.fitness.partial_cmp(&b.fitness) {
+    //                 ordering
+    //             } else {
+    //                 std::cmp::Ordering::Equal
+    //         }
+    //     });
 
-    info!("{:?}", cooc_snds.iter().map(|c| 
-            (env.dict.get_word(&c.word), c.fitness)).collect::<Vec<(&str, f64)>>());
+    // info!("{:?}", cooc_snds.iter().map(|c| 
+    //         (env.dict.get_word(&c.word), c.fitness)).collect::<Vec<(&str, f64)>>());
+
+    cooc_snds.iter().map(|c| c.word).collect()
 }

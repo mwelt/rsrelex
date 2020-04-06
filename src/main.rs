@@ -5,16 +5,19 @@ pub mod conex;
 pub mod wikitext;
 pub mod xml;
 pub mod pso;
+pub mod train;
 
 #[macro_use]
 extern crate lazy_static;
 
 #[cfg(test)]
+mod tests;
+#[cfg(test)]
 mod wikitext_tests;
 #[cfg(test)]
 mod pso_tests;
 #[cfg(test)]
-mod tests;
+mod train_tests;
 
 use log::{info, error};
 use types::{DefaultLogger, CoocInput, soundness_test, Env, DipreInput};
@@ -57,13 +60,16 @@ async fn main() {
     let program = args[0].clone();
 
     let mut opts = Options::new();
-    opts.optflag("s", "soundness", "test soundness of bin-files");
-    opts.optopt("x", "import-xml", "import xml files from directory", "DIR");
-    opts.optopt("t", "tag", "read specific tag from xml files.", "TAG");
-    opts.optopt("l", "limit", "Limit the count of documents processed from all xml files.", "LIMIT");
-    opts.optopt("p", "preprocessor", "Preprocessor function.", "FUNC");
-    opts.reqopt("b", "bin-files", "bin-file directory (if -x is present this directory denotes the
-        output directory, otherwise bin-file backup data is read from this directory).", "DIR");
+    opts.optflag("s", "soundness", "Test soundness of bin-files.");
+    opts.optopt("t", "train", "Train model parameter with MOPSO.", "FILE");
+    opts.optopt("x", "import-xml", "Import xml files from directory.", "DIR");
+    opts.optopt("xt", "xml-tag", "Read specific tag from xml files.", "TAG");
+    opts.optopt("xl", "xml-limit", "Limit the count of documents processed from all xml files.", "LIMIT");
+    opts.optopt("xp", "xml-preprocessor", "Preprocessor function.", "FUNC");
+    opts.reqopt("b", "bin-files", 
+        "Bin-file directory (if -x is present this directory denotes the
+        output directory, otherwise bin-file backup data is read from this directory).", 
+        "DIR");
 
     let matches = match opts.parse(&args[1..]) {
         Ok(m) => { m }
@@ -89,15 +95,15 @@ async fn main() {
             Some(d) => { d }
         };
 
-        if ! matches.opt_present("t") {
-            error!("If x option present t needs to be present as well!");
+        if ! matches.opt_present("xt") {
+            error!("If x option present xt (xml-tag) needs to be present as well!");
             print_usage(&program, opts);
             return;
         }
 
-        let tag = match matches.opt_str("t") {
+        let tag = match matches.opt_str("xt") {
             None => {
-                error!("If x option present t needs to be present as well!");
+                error!("If x option present xt (xml-tag) needs to be present as well!");
                 print_usage(&program, opts);
                 return;
             }
@@ -105,8 +111,8 @@ async fn main() {
         };
 
         // read_xml_and_persist_env(&input_dir, &bin_file_dir, b"AbstractText", Option::Some(1000));
-        let limit: Option<usize> = if matches.opt_present("l") {
-            matches.opt_str("l").and_then(|l| l.parse().ok()) 
+        let limit: Option<usize> = if matches.opt_present("xl") {
+            matches.opt_str("xl").and_then(|l| l.parse().ok()) 
         } else { Option::None };
 
         let mut preprocessors: HashMap<String, PreprocessorFunction> = 
@@ -114,8 +120,8 @@ async fn main() {
 
         preprocessors.insert("wikitext::strip_markup".into(), wikitext::strip_markup);
 
-        let preprocessor = if matches.opt_present("p") {
-            matches.opt_str("p").and_then(|p| {
+        let preprocessor = if matches.opt_present("xp") {
+            matches.opt_str("xp").and_then(|p| {
                 let p_ = preprocessors.get(&p);
 
                 if p_.is_some() {
@@ -147,6 +153,30 @@ async fn main() {
             info!("Done soundness test.");
         }
 
+        if matches.opt_present("t") {
+            let reference_file = match matches.opt_str("t") {
+                None => {
+                    print_usage(&program, opts);
+                    return;
+                }
+                Some(t) => { t }
+            };
+
+
+        } else {
+            let set = vec! [
+                "London",
+                "Berlin",
+                "Madrid",
+                "Lima"
+            ];
+
+            info!("{:?}", set);
+            let json = CoocInput::new(set);
+            do_conex(json, conex::DEFAULT_CONEX_HYPER_PARAMETER, &env);
+        }
+
+
         // let wpairs = vec! [
         //     ("organs", "liver"),
         //     ("organs", "lung"),
@@ -158,16 +188,6 @@ async fn main() {
         // info!("Json: {}", json);
         // do_relex(DipreInput::deserialize(&json), &env, DefaultLogger::new()).await;
        
-        let set = vec! [
-            "London",
-            "Berlin",
-            "Madrid",
-            "Lima"
-        ];
-
-        info!("{:?}", set);
-        let json = CoocInput::new(set);
-        do_conex(json, conex::DEFAULT_CONEX_HYPER_PARAMETER, &env);
 
         // service::run_server(env).await;    
     }
