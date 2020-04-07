@@ -152,7 +152,7 @@ fn cooc_input_to_word_nr_set(cooc_input: &CoocInput, env: &Env)
 //     term_frequency: usize
 // }
 
-pub fn do_conex(
+pub fn do_conex (
     cooc_input: &CoocInput,
     hyper_params: &ConexHyperParameter, 
     env: &Env) -> Vec<WordNr> {

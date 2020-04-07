@@ -79,7 +79,7 @@ impl Swarm<'_> {
         position_bounds: Vec<Bound>,
         fitness_bounds: Vec<Bound>,
         fitness_pareto_directions: Vec<ParetoDirection>,
-        fitness_fn: &'a FitnessFn) -> Swarm {
+        fitness_fn: &'a FitnessFn) -> Swarm<'a> {
 
         // get random generator
         let mut rng = rand::thread_rng();

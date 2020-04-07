@@ -6,7 +6,7 @@ fn default_fitness_fn(pos: &Position) -> Vec<f64>{
     vec![pos[0]/10.0, pos[1]/10.0]
 }
 
-fn init_swarm<'a>(fitness_fn: &'a FitnessFn) -> Swarm {
+fn init_swarm<'a>(fitness_fn: &'a FitnessFn) -> Swarm<'a> {
     // let fitness_fn: FitnessFn = |pos| vec![pos[0].sin(), pos[1].cos()];
 
     let position_bounds: Vec<Bound> = vec![

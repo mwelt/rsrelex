@@ -52,18 +52,27 @@ pub fn calc_precision_recall(
     (precision, recall)
 }
 
-pub fn train_mopso<'a>(
-    bootstrap_words: &CoocInput, 
-    reference_words: &Vec<WordNr>, 
-    dat_dir: &str, 
-    env: &Env) {
-
-    let fitness_fn = |p: &Position| {
-        let hyper_params = ConexHyperParameter::from_vector(p.to_vec());
-        let conex_res = do_conex(bootstrap_words, &hyper_params, env);
-        let (precision, recall) = calc_precision_recall(&conex_res, reference_words);
-        vec![precision, recall]
+pub fn mk_fitness_fn<'a>(env: &'a Env) -> &'a FitnessFn {
+   
+    let f: &'a FitnessFn = |p: &Position| {
+        let foo = env.dict.get_word(&0);
+        vec![0.0, 0.0]
     };
+}
+
+pub fn train_mopso<'a>(
+    bootstrap_words: &'a CoocInput, 
+    reference_words: &'a Vec<WordNr>, 
+    dat_dir: &'a str, 
+    env: &'a Env) {
+
+    // let fitness_fn = |p: &Position| {
+    //     let hyper_params = ConexHyperParameter::from_vector(p.to_vec());
+    //     let conex_res = do_conex(bootstrap_words, &hyper_params, env);
+    //     let (precision, recall) = calc_precision_recall(&conex_res, reference_words);
+    //     vec![precision, recall]
+    // };
+
 
     // {
     // };
@@ -85,7 +94,7 @@ pub fn train_mopso<'a>(
 
     let fitness_pareto_directions = vec![true, true];
     
-    let mut swarm = Swarm::new(
+    let mut swarm: Swarm<'a> = Swarm::new(
         50,
         0.1,
         0.1,

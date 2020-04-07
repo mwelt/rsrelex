@@ -173,7 +173,7 @@ async fn main() {
 
             info!("{:?}", set);
             let json = CoocInput::new(set);
-            do_conex(json, conex::DEFAULT_CONEX_HYPER_PARAMETER, &env);
+            do_conex(&json, &conex::DEFAULT_CONEX_HYPER_PARAMETER, &env);
         }
 
 
