@@ -2,6 +2,7 @@ use rand::seq::SliceRandom;
 use rand::Rng;
 use rand::rngs::ThreadRng;
 use rand::distributions::{Distribution, Uniform};
+use log::info;
 
 pub type Position = Vec<f64>;
 pub type Velocity = Vec<f64>;
@@ -286,6 +287,7 @@ impl Swarm<'_> {
         on_iteration: &dyn Fn(usize, &Swarm) -> ()) {
 
         for i in 0..iterations {
+            info!("iteration {} of {}", i, iterations - 1);
             self.update_particles();
             self.select_new_leaders();
             self.pareto_crowding_distance();

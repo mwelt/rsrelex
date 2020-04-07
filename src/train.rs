@@ -46,8 +46,18 @@ pub fn calc_precision_recall(
     // let false_negatives = reference.difference(&true_positives)
     //     .map(|x| *x).collect();
 
-    let precision = true_positives.len() as f64 / retrival_erg.len() as f64;
-    let recall = true_positives.len() as f64 / reference.len() as f64;
+    let retrival_erg_len = retrival_erg.len();
+    let precision = if retrival_erg_len == 0 {
+        0f64
+    } else {
+        true_positives.len() as f64 / retrival_erg_len as f64
+    };
+
+    let recall = if retrival_erg_len == 0 {
+        0f64
+    } else {
+        true_positives.len() as f64 / reference.len() as f64
+    };
 
     (precision, recall)
 }
@@ -114,13 +124,21 @@ pub fn train_mopso<'a>(
     dat_dir: &'a str) -> Vec<(Position, Fitness)> {
 
     let position_bounds: Vec<Bound> = vec![
-        (std::f64::MIN, std::f64::MAX),
-        (std::f64::MIN, std::f64::MAX),
-        (std::f64::MIN, std::f64::MAX),
-        (std::f64::MIN, std::f64::MAX),
-        (std::f64::MIN, std::f64::MAX),
-        (std::f64::MIN, std::f64::MAX),
-        (std::f64::MIN, std::f64::MAX)
+        (-100f64, 100f64),
+        (-100f64, 100f64),
+        (-100f64, 100f64),
+        (-100f64, 100f64),
+        (-100f64, 100f64),
+        (-100f64, 100f64),
+        (-100f64, 100f64),
+        (-100f64, 100f64)
+        // (std::f64::MIN, std::f64::MAX),
+        // (std::f64::MIN, std::f64::MAX),
+        // (std::f64::MIN, std::f64::MAX),
+        // (std::f64::MIN, std::f64::MAX),
+        // (std::f64::MIN, std::f64::MAX),
+        // (std::f64::MIN, std::f64::MAX),
+        // (std::f64::MIN, std::f64::MAX)
         ];
 
     let fitness_bounds: Vec<Bound> = vec![ 
@@ -131,13 +149,13 @@ pub fn train_mopso<'a>(
     let fitness_pareto_directions = vec![true, true];
     
     let mut swarm: Swarm<'a> = Swarm::new(
-        50,
-        0.1,
-        0.1,
+        100,
+        0.2,
+        0.2,
         0.02,
         position_bounds,
         fitness_bounds,
-        vec![true, false],
+        fitness_pareto_directions,
         fitness_fn
     );
 

@@ -1,6 +1,6 @@
 use super::types::{CoocInput, WordNr, CoocFst, CoocSnd, Env}; 
 
-use log::{info, warn};
+use log::{debug, info, warn};
 use std::collections::HashMap;
 use std::collections::HashSet;
 
@@ -187,11 +187,11 @@ pub fn do_conex_(
     // let wpair_word_frequency_boost =
     //     COOC1_GLOBAL_TERM_FREQUENCY_BOOST_PER_SENTENCE / env.sentences.sentences.len() as f32;  
 
-    // info!("wpair_word_frequency_boost = {}", wpair_word_frequency_boost);
+    // debug!("wpair_word_frequency_boost = {}", wpair_word_frequency_boost);
 
     let mut coocs_on_cooc_fst: HashMap<WordNr, CoocFst> = HashMap::new(); 
 
-    info!("Collecting syntagmatic context");
+    debug!("Collecting syntagmatic context");
     for word in bootstrap_set {
         let coocs_for_word = cooccurrences_for_word(*word, env);
         let mut already_word_frequency_boosted: HashSet<WordNr> = HashSet::new(); 
@@ -224,8 +224,8 @@ pub fn do_conex_(
     //     |(_, cooc_fst_a), (_, cooc_fst_b)| 
     //     cooc_fst_a.fitness.cmp(&cooc_fst_b.fitness));
 
-    // info!("Done collecting syntagmatic context {:?}", coocs_on_cooc_fst);
-    info!("Done collecting syntagmatic context.");
+    // debug!("Done collecting syntagmatic context {:?}", coocs_on_cooc_fst);
+    debug!("Done collecting syntagmatic context.");
     
     let l1 = coocs_on_cooc_fst.len();
 
@@ -235,19 +235,19 @@ pub fn do_conex_(
         .map(|(_, c)| (*c).clone())
         .collect();
 
-    info!("{} from {} syntagmatic coocs left after applying threshold of {}",
+    debug!("{} from {} syntagmatic coocs left after applying threshold of {}",
         cooc_fsts.len(), l1, hyper_params.cooc1_survivor_threshold); 
 
     // cooc_fsts.sort_unstable_by(
     //     |a, b| 
     //     a.fitness.cmp(&b.fitness));
 
-    // info!("{:?}", cooc_fsts.iter().map(|c| 
+    // debug!("{:?}", cooc_fsts.iter().map(|c| 
     //         (env.dict.get_word(&c.word), c.fitness)).collect::<Vec<(&str, isize)>>());
     
     let mut coocs_on_cooc_snd: HashMap<WordNr, CoocSnd> = HashMap::new(); 
 
-    info!("Collecting paradigmatic context");
+    debug!("Collecting paradigmatic context");
     for cooc in cooc_fsts {
         let coocs_for_word = cooccurrences_for_word(cooc.word, env);
         let mut already_cooc_frequency_boosted: HashSet<WordNr> = HashSet::new(); 
@@ -271,7 +271,7 @@ pub fn do_conex_(
         }
 
     }
-    info!("Done collecting paradigmatic context.");
+    debug!("Done collecting paradigmatic context.");
    
     let l2 = coocs_on_cooc_snd.len();
     
@@ -281,7 +281,7 @@ pub fn do_conex_(
         .map(|(_, c)| (*c).clone())
         .collect();
 
-    info!("{} from {} paradigmatic coocs left after applying threshold of {}",
+    debug!("{} from {} paradigmatic coocs left after applying threshold of {}",
         cooc_snds.len(), l2, hyper_params.cooc2_survivor_threshold); 
 
     // cooc_snds.sort_unstable_by(
@@ -294,7 +294,7 @@ pub fn do_conex_(
     //         }
     //     });
 
-    // info!("{:?}", cooc_snds.iter().map(|c| 
+    // debug!("{:?}", cooc_snds.iter().map(|c| 
     //         (env.dict.get_word(&c.word), c.fitness)).collect::<Vec<(&str, f64)>>());
 
     cooc_snds.iter().map(|c| c.word).collect()
