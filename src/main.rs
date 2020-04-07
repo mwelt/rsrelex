@@ -24,7 +24,8 @@ use types::{DefaultLogger, CoocInput, soundness_test, Env, DipreInput};
 use xml::{read_xml_and_persist_env, PreprocessorFunction};
 use std::env;
 use relex::do_relex;
-use conex::do_conex;
+use train::{ConexFitnessFn, train_mopso, read_word_file}; 
+use conex::{do_conex, cooc_input_to_word_nr_set};
 use std::collections::HashMap;
 use getopts::Options;
 
@@ -63,9 +64,9 @@ async fn main() {
     opts.optflag("s", "soundness", "Test soundness of bin-files.");
     opts.optopt("t", "train", "Train model parameter with MOPSO.", "FILE");
     opts.optopt("x", "import-xml", "Import xml files from directory.", "DIR");
-    opts.optopt("xt", "xml-tag", "Read specific tag from xml files.", "TAG");
-    opts.optopt("xl", "xml-limit", "Limit the count of documents processed from all xml files.", "LIMIT");
-    opts.optopt("xp", "xml-preprocessor", "Preprocessor function.", "FUNC");
+    opts.optopt("", "xt", "Read specific tag from xml files.", "TAG");
+    opts.optopt("", "xl", "Limit the count of documents processed from all xml files.", "LIMIT");
+    opts.optopt("", "xp", "Preprocessor function.", "FUNC");
     opts.reqopt("b", "bin-files", 
         "Bin-file directory (if -x is present this directory denotes the
         output directory, otherwise bin-file backup data is read from this directory).", 
@@ -162,6 +163,37 @@ async fn main() {
                 Some(t) => { t }
             };
 
+            let bootstrap_words = vec! [
+                "Germany",
+                "Poland",
+                "Russia",
+                "France",
+                "Belgium"
+                // "London",
+                // "Berlin",
+                // "Madrid",
+                // "Lima"
+            ];
+
+            let json = CoocInput::new(bootstrap_words);
+            let bootstrap_words = cooc_input_to_word_nr_set(&json, &env); 
+
+            let reference_words = read_word_file(&reference_file, &env); 
+
+            let fitness_fn = ConexFitnessFn::new(
+                &bootstrap_words,
+                &reference_words,
+                &env 
+            );
+
+            info!("starting mopso training.");
+            let pareto_front = train_mopso(&fitness_fn, "train_dat/");
+            info!("finished mopso training.");
+
+            info!("final pareto front:");
+            for (pos, fitness) in pareto_front {
+                println!("Position: {:?}, Fitness: {:?}", pos, fitness);
+            }
 
         } else {
             let set = vec! [

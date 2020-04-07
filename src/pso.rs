@@ -8,7 +8,11 @@ pub type Velocity = Vec<f64>;
 pub type Fitness = Vec<f64>;
 pub type ParetoDirection = bool;
 pub type Bound = (f64, f64);
-pub type FitnessFn = dyn Fn(&Position) -> Fitness;
+// pub type FitnessFn = dyn Fn(&Position) -> Fitness;
+
+pub trait FitnessFn {
+    fn calc_fitness(&self, pos: &Position) -> Fitness;
+}
 
 #[derive(Clone)]
 pub struct Leader {
@@ -27,7 +31,7 @@ pub struct Swarm<'a> {
     pub fitness_bounds: Vec<Bound>,
     pub fitness_dim: usize,
     pub fitness_pareto_directions: Vec<ParetoDirection>,
-    pub fitness_fn: &'a FitnessFn,
+    pub fitness_fn: &'a dyn FitnessFn,
     pub leaders: Vec<Leader>,
     pub rank_sum: usize,
     pub particles: Vec<Particle>
@@ -49,7 +53,7 @@ impl Swarm<'_> {
     pub fn generate_random_particles(
         num_particles: usize, 
         uniform_distributions: &[Uniform<f64>],
-        fitness_fn: &FitnessFn,
+        fitness_fn: &dyn FitnessFn,
         rng: &mut ThreadRng) -> Vec<Particle> {
 
         let mut particles: Vec<Particle> = Vec::with_capacity(num_particles);
@@ -62,7 +66,7 @@ impl Swarm<'_> {
             for d in uniform_distributions.iter() {
                 initial_pos.push(d.sample(rng)); 
             }
-            let initial_fitness = fitness_fn(&initial_pos);
+            let initial_fitness = fitness_fn.calc_fitness(&initial_pos);
             
             let particle = Particle::new(initial_pos, initial_fitness);
             particles.push(particle); 
@@ -79,7 +83,7 @@ impl Swarm<'_> {
         position_bounds: Vec<Bound>,
         fitness_bounds: Vec<Bound>,
         fitness_pareto_directions: Vec<ParetoDirection>,
-        fitness_fn: &'a FitnessFn) -> Swarm<'a> {
+        fitness_fn: &'a dyn FitnessFn) -> Swarm<'a> {
 
         // get random generator
         let mut rng = rand::thread_rng();
@@ -263,7 +267,7 @@ impl Swarm<'_> {
             }
             particle.velocity = velocity;
 
-            let fitness = (self.fitness_fn)(&particle.position);
+            let fitness = self.fitness_fn.calc_fitness(&particle.position);
             // this is a little tricky. The personal best is 
             // only updated if the best stille dominates the 
             // new one, if not the new position is taken either way
@@ -279,7 +283,7 @@ impl Swarm<'_> {
 
     pub fn fly(&mut self, 
         iterations: usize,
-        on_iteration: fn(i: usize, &Swarm) -> ()) {
+        on_iteration: &dyn Fn(usize, &Swarm) -> ()) {
 
         for i in 0..iterations {
             self.update_particles();

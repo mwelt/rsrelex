@@ -1,8 +1,8 @@
-use super::pso::{Position, Bound, Swarm, FitnessFn};
-use super::conex::{do_conex, ConexHyperParameter};
-use super::types::{CoocInput, WordNr, Env};
+use super::pso::{Position, Bound, Swarm, FitnessFn, Fitness};
+use super::conex::{do_conex_, ConexHyperParameter};
+use super::types::{WordNr, Env};
 use std::collections::HashSet;
-use std::fs::File;
+use std::fs::{File, write};
 use std::io::{BufRead, BufReader, Result};
 use log::{debug, info};
 
@@ -52,30 +52,66 @@ pub fn calc_precision_recall(
     (precision, recall)
 }
 
-pub fn mk_fitness_fn<'a>(env: &'a Env) -> &'a FitnessFn {
+pub struct ConexFitnessFn<'a> {
+    env: &'a Env, 
+    bootstrap_words: &'a HashSet<WordNr>, 
+    reference_words: &'a Vec<WordNr>
+}
+
+impl ConexFitnessFn<'_> {
+    pub fn new<'a>(
+        bootstrap_words: &'a HashSet<WordNr>, 
+        reference_words: &'a Vec<WordNr>,
+        env: &'a Env) -> ConexFitnessFn<'a> {
+
+        ConexFitnessFn {
+            env,
+            bootstrap_words,
+            reference_words
+        }
+    }
+}
+
+impl FitnessFn for ConexFitnessFn<'_> {
+    fn calc_fitness(&self, pos: &Position) -> Fitness {
+        let hyper_params = ConexHyperParameter::from_vector(pos.to_vec());
+        let conex_res = do_conex_(self.bootstrap_words, &hyper_params, self.env);
+        let (precision, recall) = calc_precision_recall(&conex_res, self.reference_words);
+        vec![precision, recall]
+    }
+}
+
+fn points_to_string_(points: &[(&Vec<f64>, &Vec<f64>)]) -> String {
+    points.iter()
+        .map(|(xs, ys)| {
+            let xsstr: String = xs.iter()
+                .map(|x| x.to_string()).collect::<Vec<String>>().join("\t");
+
+            let ysstr: String = ys.iter()
+                .map(|y| y.to_string()).collect::<Vec<String>>().join("\t");
+
+            [xsstr, ysstr].join("\t")
+
+        })
+        .collect::<Vec<String>>().join("\n")
+}
+
+fn write_swarm_data(i: usize, swarm: &Swarm, dat_dir: &str){
+
+    let particle_data: Vec<(&Vec<f64>, &Vec<f64>)> = swarm.particles.iter()
+        .map(|p| (&p.position, &p.fitness)).collect();
+    write([dat_dir, "p_", &i.to_string(), ".dat"].join(""), 
+        points_to_string_(&particle_data)).unwrap();
    
-    let f: &'a FitnessFn = |p: &Position| {
-        let foo = env.dict.get_word(&0);
-        vec![0.0, 0.0]
-    };
+    let leader_data: Vec<(&Vec<f64>, &Vec<f64>)> = swarm.leaders.iter()
+        .map(|l| (&l.position, &l.fitness)).collect();
+    write([dat_dir, "l_", &i.to_string(), ".dat"].join(""), 
+        points_to_string_(&leader_data)).unwrap();
 }
 
 pub fn train_mopso<'a>(
-    bootstrap_words: &'a CoocInput, 
-    reference_words: &'a Vec<WordNr>, 
-    dat_dir: &'a str, 
-    env: &'a Env) {
-
-    // let fitness_fn = |p: &Position| {
-    //     let hyper_params = ConexHyperParameter::from_vector(p.to_vec());
-    //     let conex_res = do_conex(bootstrap_words, &hyper_params, env);
-    //     let (precision, recall) = calc_precision_recall(&conex_res, reference_words);
-    //     vec![precision, recall]
-    // };
-
-
-    // {
-    // };
+    fitness_fn: &'a ConexFitnessFn,
+    dat_dir: &'a str) -> Vec<(Position, Fitness)> {
 
     let position_bounds: Vec<Bound> = vec![
         (std::f64::MIN, std::f64::MAX),
@@ -102,6 +138,14 @@ pub fn train_mopso<'a>(
         position_bounds,
         fitness_bounds,
         vec![true, false],
-        &fitness_fn
+        fitness_fn
     );
+
+    swarm.fly(100,
+        &|i, swarm| {
+            write_swarm_data(i, swarm, dat_dir);
+        });
+
+    swarm.leaders.iter()
+        .map(|l| (l.position.clone(), l.fitness.clone())).collect()
 }

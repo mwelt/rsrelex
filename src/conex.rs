@@ -120,7 +120,7 @@ fn cooccurrences_for_word(word: WordNr, env: &Env) -> HashMap<WordNr, isize>{
 
 }
 
-fn cooc_input_to_word_nr_set(cooc_input: &CoocInput, env: &Env) 
+pub fn cooc_input_to_word_nr_set(cooc_input: &CoocInput, env: &Env) 
     -> HashSet<WordNr>{
 
     cooc_input.set.iter()
@@ -152,11 +152,23 @@ fn cooc_input_to_word_nr_set(cooc_input: &CoocInput, env: &Env)
 //     term_frequency: usize
 // }
 
-pub fn do_conex (
+pub fn do_conex(
     cooc_input: &CoocInput,
     hyper_params: &ConexHyperParameter, 
     env: &Env) -> Vec<WordNr> {
 
+    info!("Converting input {:?} into set of word numbers", cooc_input);
+    let bootstrap_set = cooc_input_to_word_nr_set(&cooc_input, &env);
+    info!("Done converting input into set of word numbers: {:?}",           
+             bootstrap_set);
+
+    do_conex_(&bootstrap_set, hyper_params, env)
+}
+
+pub fn do_conex_(
+    bootstrap_set: &HashSet<WordNr>,
+    hyper_params: &ConexHyperParameter, 
+    env: &Env) -> Vec<WordNr> {
     // this can get seriously wrong if the numbers outgrow
     // i16::MIN, but if this happens our fitness score
     // is messed up anyways
@@ -171,10 +183,6 @@ pub fn do_conex (
     //     }
     // };
 
-    info!("Converting input {:?} into set of word numbers", cooc_input);
-    let bootstrap_set = cooc_input_to_word_nr_set(&cooc_input, &env);
-    info!("Done converting input into set of word numbers: {:?}",           
-             bootstrap_set);
 
     // let wpair_word_frequency_boost =
     //     COOC1_GLOBAL_TERM_FREQUENCY_BOOST_PER_SENTENCE / env.sentences.sentences.len() as f32;  
@@ -185,7 +193,7 @@ pub fn do_conex (
 
     info!("Collecting syntagmatic context");
     for word in bootstrap_set {
-        let coocs_for_word = cooccurrences_for_word(word, env);
+        let coocs_for_word = cooccurrences_for_word(*word, env);
         let mut already_word_frequency_boosted: HashSet<WordNr> = HashSet::new(); 
 
         for (cooc, count) in coocs_for_word {

@@ -1,7 +1,7 @@
 use super::types::{AsyncLogger, DipreInput, EMPTY_WORD,
 WordNr, SentenceId, Env, WPair, Pattern}; 
 
-use log::error;
+use log::{error, warn};
 use std::collections::HashMap;
 use std::collections::HashSet;
 
@@ -341,8 +341,8 @@ pub async fn do_relex<F: AsyncLogger>(
                     // is messed up anyways
                     let mut save_cast = |wn_freq_boost, w| {
                         if wn_freq_boost < std::i16::MIN as f32 {
-                            log.log(format!("Word frequency boost outmaxed by {}",
-                                     env.dict.get_word(w)));
+                            warn!("Word frequency boost outmaxed by {}",
+                                     env.dict.get_word(w));
                             std::i16::MIN
                         } else {
                             // save cast now
