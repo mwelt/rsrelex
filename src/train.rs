@@ -106,7 +106,7 @@ fn points_to_string_(points: &[(&Vec<f64>, &Vec<f64>)]) -> String {
         .collect::<Vec<String>>().join("\n")
 }
 
-fn write_swarm_data(i: usize, swarm: &Swarm, dat_dir: &str){
+fn write_swarm_data<T: FitnessFn>(i: usize, swarm: &Swarm<T>, dat_dir: &str){
 
     let particle_data: Vec<(&Vec<f64>, &Vec<f64>)> = swarm.particles.iter()
         .map(|p| (&p.position, &p.fitness)).collect();
@@ -142,13 +142,13 @@ pub fn train_mopso<'a>(
         ];
 
     let fitness_bounds: Vec<Bound> = vec![ 
-        (1.0, 0.0),
-        (1.0, 0.00)
+        (0.0, 1.0),
+        (0.0, 1.0)
         ];
 
     let fitness_pareto_directions = vec![true, true];
     
-    let mut swarm: Swarm<'a> = Swarm::new(
+    let mut swarm: Swarm<'a, ConexFitnessFn> = Swarm::<ConexFitnessFn>::new(
         100,
         0.2,
         0.2,

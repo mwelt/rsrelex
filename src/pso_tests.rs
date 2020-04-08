@@ -11,7 +11,7 @@ impl FitnessFn for TestFitnessFn {
     }
 }
 
-fn init_swarm<'a>(fitness_fn: &'a dyn FitnessFn) -> Swarm<'a> {
+fn init_swarm<'a>(fitness_fn: &'a TestFitnessFn) -> Swarm<'a, TestFitnessFn> {
     // let fitness_fn: FitnessFn = |pos| vec![pos[0].sin(), pos[1].cos()];
 
     let position_bounds: Vec<Bound> = vec![
@@ -29,7 +29,7 @@ fn init_swarm<'a>(fitness_fn: &'a dyn FitnessFn) -> Swarm<'a> {
     // optimization of [x/10, y/10] with 
     // x to max and y to min -> should yield  
     // optimal pareto of [0,0]
-    Swarm::new(
+    Swarm::<TestFitnessFn>::new(
         50,
         0.1,
         0.1,
@@ -41,7 +41,7 @@ fn init_swarm<'a>(fitness_fn: &'a dyn FitnessFn) -> Swarm<'a> {
     )
 }
 
-fn test_leader_pareto(swarm: &Swarm){
+fn test_leader_pareto(swarm: &Swarm<TestFitnessFn>){
     
     // check if leader fitness is really pareto optimal
     for leader in swarm.leaders.iter() {
@@ -58,7 +58,7 @@ fn test_leader_pareto(swarm: &Swarm){
     }
 }
 
-fn test_particles_in_bounds(swarm: &Swarm) {
+fn test_particles_in_bounds(swarm: &Swarm<TestFitnessFn>) {
     for particle in swarm.particles.iter() {
         for (i, x_i) in particle.position.iter().enumerate() {
             assert!(*x_i >= swarm.position_bounds[i].0);
@@ -67,7 +67,7 @@ fn test_particles_in_bounds(swarm: &Swarm) {
     }
 }
 
-fn write_swarm_dat(swarm: &Swarm, file_name_prefix: &str, 
+fn write_swarm_dat(swarm: &Swarm<TestFitnessFn>, file_name_prefix: &str, 
     file_name_suffix: &str, write_fitness: bool) {
     
     // write updated movement data
@@ -96,7 +96,7 @@ fn write_swarm_dat(swarm: &Swarm, file_name_prefix: &str,
     }
 }
 
-fn on_iteration(i: usize, swarm: &Swarm){
+fn on_iteration(i: usize, swarm: &Swarm<TestFitnessFn>){
     // check if all leader are pareto for each step
     test_leader_pareto(swarm);
     test_particles_in_bounds(swarm);
@@ -107,7 +107,7 @@ fn on_iteration(i: usize, swarm: &Swarm){
 fn test_swarm_fly() {
     let mut swarm = init_swarm(&TestFitnessFn{});
     write_swarm_dat(&swarm, "fly_test/", "0", false);
-    swarm.fly(100, on_iteration);
+    swarm.fly(100, &on_iteration);
 }
 
 #[test]
@@ -184,6 +184,20 @@ fn test_pareto_front() {
     write("domination_front.dat", points_to_string(&pareto_front)).unwrap();
 }
 
+#[test]
+fn test_domination_zero_zero(){
+    assert_eq!(false, dominates(&[0.0, 0.0], &[0.0, 0.0], &[true, true]));
+}
+
+#[test]
+fn test_pareto_front_zero_zero(){
+    assert_eq!(0, pareto_front(
+        &[
+        &vec![0f64, 0f64],
+        &vec![0f64, 0f64],
+        &vec![0f64, 0f64]
+        ], &[true, true]).len());
+}
 // #[test]
 // fn test_distance(){
 //     assert_approx_eq!(0f64, distance(&[0.0, 0.0], &[0.0, 0.0]));

@@ -2,7 +2,9 @@ use rand::seq::SliceRandom;
 use rand::Rng;
 use rand::rngs::ThreadRng;
 use rand::distributions::{Distribution, Uniform};
+use rayon::prelude::*;
 use log::info;
+use std::collections::HashMap;
 
 pub type Position = Vec<f64>;
 pub type Velocity = Vec<f64>;
@@ -11,7 +13,7 @@ pub type ParetoDirection = bool;
 pub type Bound = (f64, f64);
 // pub type FitnessFn = dyn Fn(&Position) -> Fitness;
 
-pub trait FitnessFn {
+pub trait FitnessFn: Sync + Sized {
     fn calc_fitness(&self, pos: &Position) -> Fitness;
 }
 
@@ -23,7 +25,7 @@ pub struct Leader {
     pub rank: usize
 }
 
-pub struct Swarm<'a> {
+pub struct Swarm<'a, F: FitnessFn + Sized> {
     pub learning_cognitive: f64,
     pub learning_social: f64,   
     pub inertia: f64,
@@ -32,13 +34,13 @@ pub struct Swarm<'a> {
     pub fitness_bounds: Vec<Bound>,
     pub fitness_dim: usize,
     pub fitness_pareto_directions: Vec<ParetoDirection>,
-    pub fitness_fn: &'a dyn FitnessFn,
+    pub fitness_fn: &'a F,
     pub leaders: Vec<Leader>,
     pub rank_sum: usize,
     pub particles: Vec<Particle>
 }
 
-impl ToString for Swarm<'_> {
+impl<F: FitnessFn> ToString for Swarm<'_, F> {
     fn to_string(&self) -> String {
         [
             "Swarm:",
@@ -49,34 +51,33 @@ impl ToString for Swarm<'_> {
     }
 }
 
-impl Swarm<'_> {
+impl<F: FitnessFn> Swarm<'_, F> {
 
     pub fn generate_random_particles(
         num_particles: usize, 
         uniform_distributions: &[Uniform<f64>],
-        fitness_fn: &dyn FitnessFn,
+        fitness_dim: usize,
         rng: &mut ThreadRng) -> Vec<Particle> {
 
         let mut particles: Vec<Particle> = Vec::with_capacity(num_particles);
 
         let dim_position = uniform_distributions.len();
 
-        for _ in 0..num_particles {
+        for id in 0..num_particles {
 
             let mut initial_pos = Vec::with_capacity(dim_position);
             for d in uniform_distributions.iter() {
                 initial_pos.push(d.sample(rng)); 
             }
-            let initial_fitness = fitness_fn.calc_fitness(&initial_pos);
             
-            let particle = Particle::new(initial_pos, initial_fitness);
+            let particle = Particle::new(id, initial_pos, vec![0f64; fitness_dim]);
             particles.push(particle); 
         }
 
         particles
     }
 
-    pub fn new<'a>(
+    pub fn new<'a, T: FitnessFn>(
         num_particles: usize,
         learning_cognitive: f64,
         learning_social: f64,
@@ -84,7 +85,7 @@ impl Swarm<'_> {
         position_bounds: Vec<Bound>,
         fitness_bounds: Vec<Bound>,
         fitness_pareto_directions: Vec<ParetoDirection>,
-        fitness_fn: &'a dyn FitnessFn) -> Swarm<'a> {
+        fitness_fn: &'a T) -> Swarm<'a, T> {
 
         // get random generator
         let mut rng = rand::thread_rng();
@@ -100,10 +101,10 @@ impl Swarm<'_> {
                 .collect();
 
         // generate some particles (fitness is evaluated)
-        let particles = Swarm::generate_random_particles(
-            num_particles, &uniform_distribution, fitness_fn, &mut rng);
+        let particles = Swarm::<T>::generate_random_particles(
+            num_particles, &uniform_distribution, fitness_dim, &mut rng);
 
-        let mut swarm = Swarm {
+        let mut swarm = Swarm::<T> {
             learning_cognitive,
             learning_social,
             inertia,
@@ -118,6 +119,7 @@ impl Swarm<'_> {
             particles,
         };
 
+        swarm.update_particle_fitness();
         swarm.select_new_leaders();
         swarm.pareto_crowding_distance();
         swarm
@@ -149,7 +151,6 @@ impl Swarm<'_> {
             self.leaders.push(potential_leaders[*i].clone()));
 
     }
-
     
     // Diversity Management via crowding-distance 
     pub fn pareto_crowding_distance(&mut self) {
@@ -248,7 +249,7 @@ impl Swarm<'_> {
         for particle in self.particles.iter_mut() {
             let mut velocity = vec![0f64; self.position_dim];
             let particle_leader = 
-                Swarm::select_next_leader(&self.leaders, self.rank_sum, &mut rng);
+                Swarm::<F>::select_next_leader(&self.leaders, self.rank_sum, &mut rng);
             for (i, x_i) in particle.position.iter_mut().enumerate() {
 
                 let c1r1:f64 = 
@@ -268,27 +269,46 @@ impl Swarm<'_> {
             }
             particle.velocity = velocity;
 
-            let fitness = self.fitness_fn.calc_fitness(&particle.position);
-            // this is a little tricky. The personal best is 
-            // only updated if the best stille dominates the 
-            // new one, if not the new position is taken either way
-            if !dominates(&particle.best_fitness, &fitness, 
-                &self.fitness_pareto_directions) {
-
-                particle.best_position = particle.position.clone();
-                particle.best_fitness = fitness;
-            }
         }
+
+    }
+
+    pub fn update_particle_fitness(&mut self){
+
+        let particles: HashMap<usize, Option<(Position, Fitness)>> = 
+            self.particles.par_iter()
+            .map(|particle| {
+                let fitness = self.fitness_fn.calc_fitness(&particle.position);
+                // this is a little tricky. The personal best is 
+                // only updated if the best stille dominates the 
+                // new one, if not the new position is taken either way
+                if !dominates(&particle.best_fitness, &fitness, 
+                    &self.fitness_pareto_directions) {
+
+                    (particle.id, Some((particle.position.clone(), fitness)))
+                } else {
+                    (particle.id, None)
+                }
+
+        }).collect::<Vec<(usize, Option<(Position, Fitness)>)>>()
+        .iter().cloned().collect();
+
+        self.particles.iter_mut().for_each(|particle| 
+            if let Some(Some((p, f))) = particles.get(&particle.id) {
+                particle.best_position = p.clone();
+                particle.best_fitness = f.clone();
+            });
 
     }
 
     pub fn fly(&mut self, 
         iterations: usize,
-        on_iteration: &dyn Fn(usize, &Swarm) -> ()) {
+        on_iteration: &dyn Fn(usize, &Swarm<F>) -> ()) {
 
         for i in 0..iterations {
             info!("iteration {} of {}", i, iterations - 1);
             self.update_particles();
+            self.update_particle_fitness();
             self.select_new_leaders();
             self.pareto_crowding_distance();
             on_iteration(i, self);
@@ -299,6 +319,7 @@ impl Swarm<'_> {
 
 #[derive(Debug)]
 pub struct Particle {
+    pub id: usize,
     pub best_position: Position,
     pub best_fitness: Fitness,
     pub position: Position,
@@ -309,9 +330,10 @@ pub struct Particle {
 
 impl Particle {
 
-    pub fn new(initial_pos: Position, initial_fitness: Fitness) -> Particle {
+    pub fn new(id: usize, initial_pos: Position, initial_fitness: Fitness) -> Particle {
         let l = initial_pos.len();
         Particle {
+            id,
             best_position: initial_pos.clone(),
             best_fitness: initial_fitness.clone(), 
             fitness: initial_fitness,
