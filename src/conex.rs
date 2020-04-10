@@ -28,16 +28,18 @@ pub struct ConexHyperParameter {
 }
 
 impl ConexHyperParameter {
-    pub fn from_vector(v: Vec<f64>) -> ConexHyperParameter {
+    pub fn from_vector(v: Vec<f64>, fix_threshold: f64) -> ConexHyperParameter {
         ConexHyperParameter {
             cooc1_word_frequency_boost: v[0],
             cooc1_set_frequency_boost:  v[1],
             cooc1_global_term_frequency_boost_per_sentence:  v[2],
-            cooc1_survivor_threshold:  v[3],
+            cooc1_survivor_threshold: fix_threshold,
+            // cooc1_survivor_threshold:  v[3],
             cooc2_cooc1_frequency_boost:  v[4],
             cooc2_set_frequency_boost:  v[5],
             cooc2_global_term_frequency_boost_per_sentence:  v[6],
-            cooc2_survivor_threshold: v[6] 
+            // cooc2_survivor_threshold: v[6] 
+            cooc2_survivor_threshold: fix_threshold
         }
     }
 
@@ -46,11 +48,11 @@ impl ConexHyperParameter {
             self.cooc1_word_frequency_boost,
             self.cooc1_set_frequency_boost,
             self.cooc1_global_term_frequency_boost_per_sentence,
-            self.cooc1_survivor_threshold,
+            // self.cooc1_survivor_threshold,
             self.cooc2_cooc1_frequency_boost,
             self.cooc2_set_frequency_boost,
             self.cooc2_global_term_frequency_boost_per_sentence,
-            self.cooc2_survivor_threshold 
+            // self.cooc2_survivor_threshold 
         ]
     }
 }

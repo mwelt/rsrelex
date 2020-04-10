@@ -68,6 +68,7 @@ pub struct ConexFitnessFn<'a> {
     reference_words: &'a Vec<WordNr>
 }
 
+#[allow(clippy::ptr_arg)]
 impl ConexFitnessFn<'_> {
     pub fn new<'a>(
         bootstrap_words: &'a HashSet<WordNr>, 
@@ -84,7 +85,7 @@ impl ConexFitnessFn<'_> {
 
 impl FitnessFn for ConexFitnessFn<'_> {
     fn calc_fitness(&self, pos: &Position) -> Fitness {
-        let hyper_params = ConexHyperParameter::from_vector(pos.to_vec());
+        let hyper_params = ConexHyperParameter::from_vector(pos.to_vec(), 0f64);
         let conex_res = do_conex_(self.bootstrap_words, &hyper_params, self.env);
         let (precision, recall) = calc_precision_recall(&conex_res, self.reference_words);
         vec![precision, recall]
