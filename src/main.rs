@@ -5,6 +5,7 @@ pub mod conex;
 pub mod wikitext;
 pub mod xml;
 pub mod pso;
+pub mod mopso;
 pub mod train;
 
 #[macro_use]
@@ -15,19 +16,23 @@ mod tests;
 #[cfg(test)]
 mod wikitext_tests;
 #[cfg(test)]
+mod mopso_tests;
+#[cfg(test)]
 mod pso_tests;
 #[cfg(test)]
 mod train_tests;
 
 use log::{info, error};
-use types::{DefaultLogger, CoocInput, soundness_test, Env, DipreInput};
+use types::{WordNr, DefaultLogger, CoocInput, soundness_test, Env, DipreInput};
 use xml::{read_xml_and_persist_env, PreprocessorFunction};
 use std::env;
 use relex::do_relex;
 use train::{ConexFitnessFn, train_mopso, read_word_file}; 
 use conex::{do_conex, cooc_input_to_word_nr_set};
 use std::collections::HashMap;
+use std::collections::HashSet;
 use getopts::Options;
+use rand::seq::SliceRandom;
 
 fn bootstrap(dir: String) -> Env {
     info!("bootstraping.");
@@ -163,22 +168,32 @@ async fn main() {
                 Some(t) => { t }
             };
 
-            let bootstrap_words = vec! [
-                "Germany",
-                "Poland",
-                "Russia",
-                "France",
-                "Belgium"
-                // "London",
-                // "Berlin",
-                // "Madrid",
-                // "Lima"
-            ];
+            // let bootstrap_words = vec! [
+            //     "Germany",
+            //     "Poland",
+            //     "Russia",
+            //     "France",
+            //     "Belgium"
+            //     // "London",
+            //     // "Berlin",
+            //     // "Madrid",
+            //     // "Lima"
+            // ];
 
-            let json = CoocInput::new(bootstrap_words);
-            let bootstrap_words = cooc_input_to_word_nr_set(&json, &env); 
+            // let json = CoocInput::new(bootstrap_words);
+            // let bootstrap_words = cooc_input_to_word_nr_set(&json, &env); 
 
             let reference_words = read_word_file(&reference_file, &env); 
+
+            let mut rng = rand::thread_rng();
+
+            let bootstrap_words: HashSet<WordNr> = reference_words
+                .choose_multiple(&mut rng, 8)
+                .map(|w_nr| *w_nr).collect();
+
+            info!("Using random bootstrap_words: {:?}",
+                bootstrap_words.iter().map(|w_nr| env.dict.get_word(w_nr))
+                .collect::<Vec<&str>>());
 
             let fitness_fn = ConexFitnessFn::new(
                 &bootstrap_words,
@@ -186,14 +201,12 @@ async fn main() {
                 &env 
             );
 
-            info!("starting mopso training.");
-            let pareto_front = train_mopso(&fitness_fn, "train_dat/");
-            info!("finished mopso training.");
+            info!("starting pso training.");
+            let (f, p) = train_mopso(&fitness_fn, "train_dat/");
+            info!("finished pso training.");
 
-            info!("final pareto front:");
-            for (pos, fitness) in pareto_front {
-                println!("Position: {:?}, Fitness: {:?}", pos, fitness);
-            }
+            info!("final leader:");
+            info!("Position: {:?}, Fitness: {:?}", p, f);
 
         } else {
             let set = vec! [

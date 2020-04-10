@@ -35,9 +35,9 @@ impl ConexHyperParameter {
             cooc1_global_term_frequency_boost_per_sentence:  v[2],
             cooc1_survivor_threshold: fix_threshold,
             // cooc1_survivor_threshold:  v[3],
-            cooc2_cooc1_frequency_boost:  v[4],
-            cooc2_set_frequency_boost:  v[5],
-            cooc2_global_term_frequency_boost_per_sentence:  v[6],
+            cooc2_cooc1_frequency_boost:  v[3],
+            cooc2_set_frequency_boost:  v[4],
+            cooc2_global_term_frequency_boost_per_sentence:  v[5],
             // cooc2_survivor_threshold: v[6] 
             cooc2_survivor_threshold: fix_threshold
         }

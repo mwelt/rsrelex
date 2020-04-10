@@ -88,51 +88,71 @@ impl FitnessFn for ConexFitnessFn<'_> {
         let hyper_params = ConexHyperParameter::from_vector(pos.to_vec(), 0f64);
         let conex_res = do_conex_(self.bootstrap_words, &hyper_params, self.env);
         let (precision, recall) = calc_precision_recall(&conex_res, self.reference_words);
-        vec![precision, recall]
+        // vec![precision, recall]
+
+        let f = (precision + recall).abs() / 2.0 - (precision - recall).abs() / 3.0;
+
+        f
+
     }
 }
 
-fn points_to_string_(points: &[(&Vec<f64>, &Vec<f64>)]) -> String {
+// fn points_to_string_(points: &[(&Vec<f64>, &Vec<f64>)]) -> String {
+//     points.iter()
+//         .map(|(xs, ys)| {
+//             let xsstr: String = xs.iter()
+//                 .map(|x| x.to_string()).collect::<Vec<String>>().join("\t");
+
+//             let ysstr: String = ys.iter()
+//                 .map(|y| y.to_string()).collect::<Vec<String>>().join("\t");
+
+//             [xsstr, ysstr].join("\t")
+
+//         })
+//         .collect::<Vec<String>>().join("\n")
+// }
+
+fn points_to_string_(points: &Vec<&Vec<f64>>) -> String {
     points.iter()
-        .map(|(xs, ys)| {
-            let xsstr: String = xs.iter()
-                .map(|x| x.to_string()).collect::<Vec<String>>().join("\t");
-
-            let ysstr: String = ys.iter()
-                .map(|y| y.to_string()).collect::<Vec<String>>().join("\t");
-
-            [xsstr, ysstr].join("\t")
-
-        })
+        .map(|p| p.iter()
+            .map(|x| x.to_string()).collect::<Vec<String>>().join("\t"))
         .collect::<Vec<String>>().join("\n")
 }
 
 fn write_swarm_data<T: FitnessFn>(i: usize, swarm: &Swarm<T>, dat_dir: &str){
 
-    let particle_data: Vec<(&Vec<f64>, &Vec<f64>)> = swarm.particles.iter()
-        .map(|p| (&p.position, &p.fitness)).collect();
-    write([dat_dir, "p_", &i.to_string(), ".dat"].join(""), 
-        points_to_string_(&particle_data)).unwrap();
+    let particle_positions: Vec<&Position> = swarm.particles.iter()
+        .map(|p| &p.position).collect();
+    write([dat_dir, "s_", &i.to_string(), ".dat"].join(""), 
+        points_to_string_(&particle_positions)).unwrap();
+
+    let fitnesss: Vec<Vec<f64>> = swarm.particles.iter()
+        .map(|p| vec![p.id as f64, p.fitness]).collect();
+    write([dat_dir, "f_", &i.to_string(), ".dat"].join(""),
+      points_to_string_(&fitnesss.iter().map(|x| x).collect())).unwrap();
+
+    // let particle_data: Vec<(&Vec<f64>, &Vec<f64>)> = swarm.particles.iter()
+    //     .map(|p| (&p.position, &p.fitness)).collect();
+    // write([dat_dir, "p_", &i.to_string(), ".dat"].join(""), 
+    //     points_to_string_(&particle_data)).unwrap();
    
-    let leader_data: Vec<(&Vec<f64>, &Vec<f64>)> = swarm.leaders.iter()
-        .map(|l| (&l.position, &l.fitness)).collect();
-    write([dat_dir, "l_", &i.to_string(), ".dat"].join(""), 
-        points_to_string_(&leader_data)).unwrap();
+    // let leader_data: Vec<(&Vec<f64>, &Vec<f64>)> = swarm.leaders.iter()
+    //     .map(|l| (&l.position, &l.fitness)).collect();
+    // write([dat_dir, "l_", &i.to_string(), ".dat"].join(""), 
+    //     points_to_string_(&leader_data)).unwrap();
 }
 
 pub fn train_mopso<'a>(
     fitness_fn: &'a ConexFitnessFn,
-    dat_dir: &'a str) -> Vec<(Position, Fitness)> {
+    dat_dir: &'a str) -> (Fitness, Position) {
 
     let position_bounds: Vec<Bound> = vec![
-        (-100f64, 100f64),
-        (-100f64, 100f64),
-        (-100f64, 100f64),
-        (-100f64, 100f64),
-        (-100f64, 100f64),
-        (-100f64, 100f64),
-        (-100f64, 100f64),
-        (-100f64, 100f64)
+        (-100f64, 100f64), // cooc1_word_frequency_boost
+        (-100f64, 100f64), // cooc1_set_frequency_boost
+        (-1000f64, 1000f64), // cooc1_global_term_frequency_boost_per_sentence
+        (-100f64, 100f64), // cooc2_word_frequency_boost
+        (-100f64, 100f64), // cooc2_word_frequncy_boost
+        (-1000f64, 1000f64), // cooc2_global_term_frequency_boost_per_sentence
         // (std::f64::MIN, std::f64::MAX),
         // (std::f64::MIN, std::f64::MAX),
         // (std::f64::MIN, std::f64::MAX),
@@ -141,22 +161,14 @@ pub fn train_mopso<'a>(
         // (std::f64::MIN, std::f64::MAX),
         // (std::f64::MIN, std::f64::MAX)
         ];
-
-    let fitness_bounds: Vec<Bound> = vec![ 
-        (0.0, 1.0),
-        (0.0, 1.0)
-        ];
-
-    let fitness_pareto_directions = vec![true, true];
     
     let mut swarm: Swarm<'a, ConexFitnessFn> = Swarm::<ConexFitnessFn>::new(
-        100,
+        500,
         0.2,
         0.2,
         0.02,
         position_bounds,
-        fitness_bounds,
-        fitness_pareto_directions,
+        (-1.0, 2.0),
         fitness_fn
     );
 
@@ -165,6 +177,7 @@ pub fn train_mopso<'a>(
             write_swarm_data(i, swarm, dat_dir);
         });
 
-    swarm.leaders.iter()
-        .map(|l| (l.position.clone(), l.fitness.clone())).collect()
+    swarm.leader
+    // swarm.leaders.iter()
+    //     .map(|l| (l.position.clone(), l.fitness.clone())).collect()
 }
