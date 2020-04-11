@@ -6,7 +6,8 @@ pub mod wikitext;
 pub mod xml;
 pub mod pso;
 pub mod mopso;
-pub mod train;
+pub mod pso_train;
+pub mod mopso_train;
 
 #[macro_use]
 extern crate lazy_static;
@@ -20,7 +21,9 @@ mod mopso_tests;
 #[cfg(test)]
 mod pso_tests;
 #[cfg(test)]
-mod train_tests;
+mod pso_train_tests;
+#[cfg(test)]
+mod mopso_train_tests;
 
 use log::{info, error};
 use types::{WordNr, DefaultLogger, CoocInput, soundness_test, Env, DipreInput};
