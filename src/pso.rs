@@ -13,7 +13,7 @@ pub type ParetoDirection = bool;
 pub type Bound = (f64, f64);
 
 pub trait FitnessFn: Sync + Sized {
-    fn calc_fitness(&self, pos: &Position) -> Fitness;
+    fn calc_fitness(&self, pos: &Position) -> (Fitness, Vec<f64>);
 }
 
 pub struct Swarm<'a, F: FitnessFn + Sized> {
@@ -60,7 +60,8 @@ impl<F: FitnessFn> Swarm<'_, F> {
         inertia: f64,
         position_bounds: Vec<Bound>,
         fitness_bounds: Bound,
-        fitness_fn: &'a T) -> Swarm<'a, T> {
+        fitness_fn: &'a T,
+        on_iteration: &dyn Fn(usize, Vec<(usize, Vec<f64>)>, &Swarm<T>) -> ()) -> Swarm<'a, T> {
 
         // get random generator
         let mut rng = rand::thread_rng();
@@ -89,8 +90,9 @@ impl<F: FitnessFn> Swarm<'_, F> {
             particles,
         };
 
-        swarm.update_particle_fitness();
+        let payloads = swarm.update_particle_fitness();
         swarm.select_new_leaders();
+        on_iteration(0, payloads, &swarm);
         swarm
     }
 
@@ -136,45 +138,53 @@ impl<F: FitnessFn> Swarm<'_, F> {
 
     }
 
-    pub fn update_particle_fitness(&mut self){
+    pub fn update_particle_fitness(&mut self) -> Vec<(usize, Vec<f64>)>{
 
-        let particles: HashMap<usize, Fitness> = 
+        let particles: HashMap<usize, (Fitness, Vec<f64>)> = 
             self.particles.par_iter()
             .map(|particle: &Particle| {
-                let fitness = self.fitness_fn.calc_fitness(&particle.position);
+                let fitness_and_payload = 
+                    self.fitness_fn.calc_fitness(&particle.position);
 
-                (particle.id, fitness) 
+                (particle.id, fitness_and_payload) 
 
-        }).collect::<Vec<(usize, Fitness)>>()
+        }).collect::<Vec<(usize, (Fitness, Vec<f64>))>>()
         .iter().cloned().collect();
 
         // info!("{:?}", particles);
 
+        let mut payloads: Vec<(usize, Vec<f64>)> = Vec::with_capacity(particles.len());
+
         self.particles.iter_mut().for_each(|particle: &mut Particle| 
            
-            if let Some(new_fitness) = particles.get(&particle.id) {
+            if let Some((new_fitness, payload)) = particles.get(&particle.id) {
 
                 if new_fitness >= &particle.best_fitness {
                     particle.best_position = particle.position.clone();
                     particle.best_fitness = *new_fitness;
                 }
                 particle.fitness = *new_fitness;
+
+                payloads.push((particle.id, payload.to_vec()));
+
             } else {
                 panic!("No new fitness for particle id found!");
             });
+
+        payloads
 
     }
 
     pub fn fly(&mut self, 
         iterations: usize,
-        on_iteration: &dyn Fn(usize, &Swarm<F>) -> ()) {
+        on_iteration: &dyn Fn(usize, Vec<(usize, Vec<f64>)>, &Swarm<F>) -> ()) {
 
-        for i in 0..iterations {
+        for i in 1..iterations+1 {
             info!("iteration {} of {}", i, iterations - 1);
             self.update_particles();
-            self.update_particle_fitness();
+            let payload = self.update_particle_fitness();
             self.select_new_leaders();
-            on_iteration(i, self);
+            on_iteration(i, payload, self);
         }
 
     }

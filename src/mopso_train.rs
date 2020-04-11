@@ -1,3 +1,4 @@
+use super::mopso::{FitnessFn, Position, Fitness, Swarm, Bound};
 use super::conex::{do_conex_, ConexHyperParameter};
 use super::types::{WordNr, Env};
 use std::collections::HashSet;
@@ -124,8 +125,7 @@ pub fn train_mopso<'a>(
     dat_dir: &'a str) -> Vec<(Position, Fitness)> {
 
     let position_bounds: Vec<Bound> = vec![
-   100  5213  100  5213    0     0  27728      0 --:--:-- --:--:-- --:--:-- 27728
-     (-100f64, 100f64),
+        (-100f64, 100f64),
         (-100f64, 100f64),
         (-100f64, 100f64),
         (-100f64, 100f64),

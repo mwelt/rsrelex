@@ -30,7 +30,7 @@ use types::{WordNr, DefaultLogger, CoocInput, soundness_test, Env, DipreInput};
 use xml::{read_xml_and_persist_env, PreprocessorFunction};
 use std::env;
 use relex::do_relex;
-use train::{ConexFitnessFn, train_mopso, read_word_file}; 
+use pso_train::{ConexFitnessFn, train_mopso, read_word_file}; 
 use conex::{do_conex, cooc_input_to_word_nr_set};
 use std::collections::HashMap;
 use std::collections::HashSet;
