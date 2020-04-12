@@ -1,5 +1,5 @@
 use assert_approx_eq::assert_approx_eq;
-use super::train::{calc_precision_recall, read_word_file};
+use super::mopso_train::{calc_precision_recall, read_word_file};
 use super::bootstrap;
 
 #[test]

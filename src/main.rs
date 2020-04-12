@@ -30,7 +30,7 @@ use types::{WordNr, DefaultLogger, CoocInput, soundness_test, Env, DipreInput};
 use xml::{read_xml_and_persist_env, PreprocessorFunction};
 use std::env;
 use relex::do_relex;
-use pso_train::{ConexFitnessFn, train_mopso, read_word_file}; 
+// use mopso_train::{ConexFitnessFn, train_mopso, read_word_file}; 
 use conex::{do_conex, cooc_input_to_word_nr_set};
 use std::collections::HashMap;
 use std::collections::HashSet;
@@ -59,9 +59,9 @@ fn print_usage(program: &str, opts: Options){
     print!("{}", opts.usage(&brief));
 }
 
-#[tokio::main]
-async fn main() {
-// fn main() {
+// #[tokio::main]
+// async fn main() {
+fn main() {
 
     env_logger::init();
 
@@ -70,7 +70,8 @@ async fn main() {
 
     let mut opts = Options::new();
     opts.optflag("s", "soundness", "Test soundness of bin-files.");
-    opts.optopt("t", "train", "Train model parameter with MOPSO.", "FILE");
+    opts.optopt("t", "train", "Train model parameter with PSO.", "FILE");
+    opts.optopt("", "to", "Training outputfile.", "FILE");
     opts.optopt("x", "import-xml", "Import xml files from directory.", "DIR");
     opts.optopt("", "xt", "Read specific tag from xml files.", "TAG");
     opts.optopt("", "xl", "Limit the count of documents processed from all xml files.", "LIMIT");
@@ -171,6 +172,12 @@ async fn main() {
                 Some(t) => { t }
             };
 
+            let outfile = match matches.opt_str("to") {
+                None => {
+                    "pso_train_swarm.dat".to_string()
+                }
+                Some(t) => { t }
+            };
             // let bootstrap_words = vec! [
             //     "Germany",
             //     "Poland",
@@ -186,30 +193,37 @@ async fn main() {
             // let json = CoocInput::new(bootstrap_words);
             // let bootstrap_words = cooc_input_to_word_nr_set(&json, &env); 
 
-            let reference_words = read_word_file(&reference_file, &env); 
+            let reference_words = pso_train::read_word_file(&reference_file, &env); 
 
             let mut rng = rand::thread_rng();
 
             let bootstrap_words: HashSet<WordNr> = reference_words
-                .choose_multiple(&mut rng, 8)
+                .choose_multiple(&mut rng, 20)
                 .map(|w_nr| *w_nr).collect();
 
             info!("Using random bootstrap_words: {:?}",
                 bootstrap_words.iter().map(|w_nr| env.dict.get_word(w_nr))
                 .collect::<Vec<&str>>());
 
-            let fitness_fn = ConexFitnessFn::new(
+            let fitness_fn = pso_train::ConexFitnessFn::new(
                 &bootstrap_words,
                 &reference_words,
                 &env 
             );
 
+            if std::path::Path::new(&outfile.clone()).exists() {
+                info!("{} already exists, removing.", outfile);
+                std::fs::remove_file(&outfile)
+                    .expect(&format!("unable to delete {}", outfile));
+            }
+
             info!("starting pso training.");
-            let (f, p) = train_mopso(&fitness_fn, "train_dat/");
+            pso_train::train(&fitness_fn, &outfile);
+            // let (f, p) = train_mopso(&fitness_fn, "train_dat/");
             info!("finished pso training.");
 
-            info!("final leader:");
-            info!("Position: {:?}, Fitness: {:?}", p, f);
+            // info!("final leader:");
+            // info!("Position: {:?}, Fitness: {:?}", p, f);
 
         } else {
             let set = vec! [

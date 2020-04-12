@@ -20,4 +20,5 @@ log = "^0.4"
 env_logger = "^0.7"
 rand = "^0"
 assert_approx_eq = "^1"
+ndarray = { version = "^0", features = ["rayon"] }
 rayon = "^1"
