@@ -1,0 +1,127 @@
+[2020-04-12T01:34:34Z INFO  rsrelex] bootstraping.
+[2020-04-12T01:34:34Z INFO  rsrelex] start reading binary data.
+[2020-04-12T01:34:34Z INFO  rsrelex::types] start reading binary file
+/data/wp/bin2/dict.bin.
+[2020-04-12T01:34:34Z INFO  rsrelex::types] done reading binary file.
+[2020-04-12T01:34:34Z INFO  rsrelex::types] start reading binary file
+/data/wp/bin2/sent.bin.
+[2020-04-12T01:34:34Z INFO  rsrelex::types] done reading binary file.
+[2020-04-12T01:34:34Z INFO  rsrelex::types] start reading binary file
+/data/wp/bin2/inv_idx.bin.
+[2020-04-12T01:34:34Z INFO  rsrelex::types] done reading binary file.
+[2020-04-12T01:34:34Z INFO  rsrelex] done reading binary data.
+[2020-04-12T01:34:34Z INFO  rsrelex] 6768 sentences loaded, with
+18049 distinct words.
+[2020-04-12T01:34:34Z INFO  rsrelex::pso_train] 53 from 257 known
+words found in word file "countries.txt".
+[2020-04-12T01:34:34Z INFO  rsrelex] Using random bootstrap_words:
+["Iran", "Portugal", "Egypt", "Malta", "Iraq", "Laos", "Argentina",
+"Canada"]
+[2020-04-12T01:34:34Z INFO  rsrelex] pso_train.dat already exists,
+removing.
+[2020-04-12T01:34:34Z INFO  rsrelex] starting pso training.
+[2020-04-12T01:34:34Z INFO  rsrelex::pso] offsets: Offsets { p: (0,
+6), v: (7, 13), pb: (13, 19), l: (20, 22), f: 6, pbf: 19 }
+[2020-04-12T01:34:35Z INFO  rsrelex::pso_train] 0 of 100
+[2020-04-12T01:34:36Z INFO  rsrelex::pso_train] 1 of 100
+[2020-04-12T01:34:37Z INFO  rsrelex::pso_train] 2 of 100
+[2020-04-12T01:34:38Z INFO  rsrelex::pso_train] 3 of 100
+[2020-04-12T01:34:39Z INFO  rsrelex::pso_train] 4 of 100
+[2020-04-12T01:34:40Z INFO  rsrelex::pso_train] 5 of 100
+[2020-04-12T01:34:41Z INFO  rsrelex::pso_train] 6 of 100
+[2020-04-12T01:34:42Z INFO  rsrelex::pso_train] 7 of 100
+[2020-04-12T01:34:43Z INFO  rsrelex::pso_train] 8 of 100
+[2020-04-12T01:34:44Z INFO  rsrelex::pso_train] 9 of 100
+[2020-04-12T01:34:45Z INFO  rsrelex::pso_train] 10 of 100
+[2020-04-12T01:34:47Z INFO  rsrelex::pso_train] 11 of 100
+[2020-04-12T01:34:47Z INFO  rsrelex::pso_train] 12 of 100
+[2020-04-12T01:34:48Z INFO  rsrelex::pso_train] 13 of 100
+[2020-04-12T01:34:49Z INFO  rsrelex::pso_train] 14 of 100
+[2020-04-12T01:34:50Z INFO  rsrelex::pso_train] 15 of 100
+[2020-04-12T01:34:51Z INFO  rsrelex::pso_train] 16 of 100
+[2020-04-12T01:34:52Z INFO  rsrelex::pso_train] 17 of 100
+[2020-04-12T01:34:53Z INFO  rsrelex::pso_train] 18 of 100
+[2020-04-12T01:34:54Z INFO  rsrelex::pso_train] 19 of 100
+[2020-04-12T01:34:54Z INFO  rsrelex::pso_train] 20 of 100
+[2020-04-12T01:34:55Z INFO  rsrelex::pso_train] 21 of 100
+[2020-04-12T01:34:56Z INFO  rsrelex::pso_train] 22 of 100
+[2020-04-12T01:34:56Z INFO  rsrelex::pso_train] 23 of 100
+[2020-04-12T01:34:57Z INFO  rsrelex::pso_train] 24 of 100
+[2020-04-12T01:34:57Z INFO  rsrelex::pso_train] 25 of 100
+[2020-04-12T01:34:58Z INFO  rsrelex::pso_train] 26 of 100
+[2020-04-12T01:34:58Z INFO  rsrelex::pso_train] 27 of 100
+[2020-04-12T01:34:59Z INFO  rsrelex::pso_train] 28 of 100
+[2020-04-12T01:34:59Z INFO  rsrelex::pso_train] 29 of 100
+[2020-04-12T01:34:59Z INFO  rsrelex::pso_train] 30 of 100
+[2020-04-12T01:35:00Z INFO  rsrelex::pso_train] 31 of 100
+[2020-04-12T01:35:00Z INFO  rsrelex::pso_train] 32 of 100
+[2020-04-12T01:35:00Z INFO  rsrelex::pso_train] 33 of 100
+[2020-04-12T01:35:00Z INFO  rsrelex::pso_train] 34 of 100
+[2020-04-12T01:35:01Z INFO  rsrelex::pso_train] 35 of 100
+[2020-04-12T01:35:01Z INFO  rsrelex::pso_train] 36 of 100
+[2020-04-12T01:35:01Z INFO  rsrelex::pso_train] 37 of 100
+[2020-04-12T01:35:02Z INFO  rsrelex::pso_train] 38 of 100
+[2020-04-12T01:35:02Z INFO  rsrelex::pso_train] 39 of 100
+[2020-04-12T01:35:02Z INFO  rsrelex::pso_train] 40 of 100
+[2020-04-12T01:35:02Z INFO  rsrelex::pso_train] 41 of 100
+[2020-04-12T01:35:03Z INFO  rsrelex::pso_train] 42 of 100
+[2020-04-12T01:35:03Z INFO  rsrelex::pso_train] 43 of 100
+[2020-04-12T01:35:03Z INFO  rsrelex::pso_train] 44 of 100
+[2020-04-12T01:35:03Z INFO  rsrelex::pso_train] 45 of 100
+[2020-04-12T01:35:03Z INFO  rsrelex::pso_train] 46 of 100
+[2020-04-12T01:35:04Z INFO  rsrelex::pso_train] 47 of 100
+[2020-04-12T01:35:04Z INFO  rsrelex::pso_train] 48 of 100
+[2020-04-12T01:35:04Z INFO  rsrelex::pso_train] 49 of 100
+[2020-04-12T01:35:04Z INFO  rsrelex::pso_train] 50 of 100
+[2020-04-12T01:35:04Z INFO  rsrelex::pso_train] 51 of 100
+[2020-04-12T01:35:05Z INFO  rsrelex::pso_train] 52 of 100
+[2020-04-12T01:35:05Z INFO  rsrelex::pso_train] 53 of 100
+[2020-04-12T01:35:05Z INFO  rsrelex::pso_train] 54 of 100
+[2020-04-12T01:35:05Z INFO  rsrelex::pso_train] 55 of 100
+[2020-04-12T01:35:05Z INFO  rsrelex::pso_train] 56 of 100
+[2020-04-12T01:35:06Z INFO  rsrelex::pso_train] 57 of 100
+[2020-04-12T01:35:06Z INFO  rsrelex::pso_train] 58 of 100
+[2020-04-12T01:35:06Z INFO  rsrelex::pso_train] 59 of 100
+[2020-04-12T01:35:06Z INFO  rsrelex::pso_train] 60 of 100
+[2020-04-12T01:35:07Z INFO  rsrelex::pso_train] 61 of 100
+[2020-04-12T01:35:07Z INFO  rsrelex::pso_train] 62 of 100
+[2020-04-12T01:35:07Z INFO  rsrelex::pso_train] 63 of 100
+[2020-04-12T01:35:07Z INFO  rsrelex::pso_train] 64 of 100
+[2020-04-12T01:35:07Z INFO  rsrelex::pso_train] 65 of 100
+[2020-04-12T01:35:07Z INFO  rsrelex::pso_train] 66 of 100
+[2020-04-12T01:35:08Z INFO  rsrelex::pso_train] 67 of 100
+[2020-04-12T01:35:08Z INFO  rsrelex::pso_train] 68 of 100
+[2020-04-12T01:35:08Z INFO  rsrelex::pso_train] 69 of 100
+[2020-04-12T01:35:08Z INFO  rsrelex::pso_train] 70 of 100
+[2020-04-12T01:35:08Z INFO  rsrelex::pso_train] 71 of 100
+[2020-04-12T01:35:09Z INFO  rsrelex::pso_train] 72 of 100
+[2020-04-12T01:35:09Z INFO  rsrelex::pso_train] 73 of 100
+[2020-04-12T01:35:09Z INFO  rsrelex::pso_train] 74 of 100
+[2020-04-12T01:35:09Z INFO  rsrelex::pso_train] 75 of 100
+[2020-04-12T01:35:09Z INFO  rsrelex::pso_train] 76 of 100
+[2020-04-12T01:35:09Z INFO  rsrelex::pso_train] 77 of 100
+[2020-04-12T01:35:10Z INFO  rsrelex::pso_train] 78 of 100
+[2020-04-12T01:35:10Z INFO  rsrelex::pso_train] 79 of 100
+[2020-04-12T01:35:10Z INFO  rsrelex::pso_train] 80 of 100
+[2020-04-12T01:35:10Z INFO  rsrelex::pso_train] 81 of 100
+[2020-04-12T01:35:10Z INFO  rsrelex::pso_train] 82 of 100
+[2020-04-12T01:35:11Z INFO  rsrelex::pso_train] 83 of 100
+[2020-04-12T01:35:11Z INFO  rsrelex::pso_train] 84 of 100
+[2020-04-12T01:35:11Z INFO  rsrelex::pso_train] 85 of 100
+[2020-04-12T01:35:11Z INFO  rsrelex::pso_train] 86 of 100
+[2020-04-12T01:35:11Z INFO  rsrelex::pso_train] 87 of 100
+[2020-04-12T01:35:11Z INFO  rsrelex::pso_train] 88 of 100
+[2020-04-12T01:35:11Z INFO  rsrelex::pso_train] 89 of 100
+[2020-04-12T01:35:12Z INFO  rsrelex::pso_train] 90 of 100
+[2020-04-12T01:35:12Z INFO  rsrelex::pso_train] 91 of 100
+[2020-04-12T01:35:12Z INFO  rsrelex::pso_train] 92 of 100
+[2020-04-12T01:35:12Z INFO  rsrelex::pso_train] 93 of 100
+[2020-04-12T01:35:12Z INFO  rsrelex::pso_train] 94 of 100
+[2020-04-12T01:35:12Z INFO  rsrelex::pso_train] 95 of 100
+[2020-04-12T01:35:12Z INFO  rsrelex::pso_train] 96 of 100
+[2020-04-12T01:35:13Z INFO  rsrelex::pso_train] 97 of 100
+[2020-04-12T01:35:13Z INFO  rsrelex::pso_train] 98 of 100
+[2020-04-12T01:35:13Z INFO  rsrelex::pso_train] 99 of 100
+[2020-04-12T01:35:13Z INFO  rsrelex::pso_train] 100 of 100
+[2020-04-12T01:35:13Z INFO  rsrelex] finished pso training.
+

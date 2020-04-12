@@ -1,0 +1,28 @@
+[I] mwelt@blacktea ~/p/rsrelex (only_vecs)>
+./target/release/rsrelex -b /data/wp/bin2 -t countries.txt --to
+pso_train.dat
+[2020-04-12T02:27:47Z INFO  rsrelex] bootstraping.
+[2020-04-12T02:27:47Z INFO  rsrelex] start reading binary data.
+[2020-04-12T02:27:47Z INFO  rsrelex::types] start reading binary file
+/data/wp/bin2/dict.bin.
+[2020-04-12T02:27:47Z INFO  rsrelex::types] done reading binary file.
+[2020-04-12T02:27:47Z INFO  rsrelex::types] start reading binary file
+/data/wp/bin2/sent.bin.
+[2020-04-12T02:27:47Z INFO  rsrelex::types] done reading binary file.
+[2020-04-12T02:27:47Z INFO  rsrelex::types] start reading binary file
+/data/wp/bin2/inv_idx.bin.
+[2020-04-12T02:27:47Z INFO  rsrelex::types] done reading binary file.
+[2020-04-12T02:27:47Z INFO  rsrelex] done reading binary data.
+[2020-04-12T02:27:47Z INFO  rsrelex] 6768 sentences loaded, with
+18049 distinct words.
+[2020-04-12T02:27:47Z INFO  rsrelex::pso_train] 53 from 257 known
+words found in word file "countries.txt".
+[2020-04-12T02:27:47Z INFO  rsrelex] Using random bootstrap_words:
+["Argentina", "Algeria", "Belgium", "Ireland", "Greece", "Venezuela",
+"India", "Jersey", "Niger", "Libya", "Chile", "Ukraine", "Norway",
+"France", "Mali", "Malta", "Brazil", "Sudan", "Australia", "Italy"]
+[2020-04-12T02:27:47Z INFO  rsrelex] pso_train.dat already exists,
+removing.
+[2020-04-12T02:27:47Z INFO  rsrelex] starting pso training.
+[2020-04-12T02:27:47Z INFO  rsrelex::pso] offsets: Offsets { p: (0,
+6), v: (7, 13), pb: (13, 19), l: (20, 22), f: 6, pbf: 19 }

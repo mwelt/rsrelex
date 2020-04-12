@@ -1,0 +1,18 @@
+#vim_filetype gnuplot
+stats infile nooutput
+blocks = STATS_blocks
+set terminal gif animate delay 10
+set output outfile 
+set xrange [-100:100]
+set yrange [-100:100]
+set zrange [-1000:1000]
+
+do for [i=0:blocks] {
+  splot infile i i u 1:2:3
+}
+
+set output outfile2
+
+do for [i=0:blocks] {
+  splot infile i i u 4:5:6
+}
