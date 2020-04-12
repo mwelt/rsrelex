@@ -1,7 +1,3 @@
-// use super::pso::{Position, Bound, Swarm, FitnessFn, Fitness};
-// use super::conex::{do_conex_, ConexHyperParameter};
-// use std::collections::HashSet;
-
 use super::*;
 use ndarray::prelude::*;
 use ndarray::parallel::prelude::*;
@@ -130,7 +126,10 @@ impl ConexFitnessFn<'_> {
 }
 
 
-pub fn train<'a>(fitness: &'a ConexFitnessFn,
+pub fn train<'a>(
+    num_particles: usize, 
+    iterations: usize, 
+    fitness: &'a ConexFitnessFn,
     out_file: &'a str){
 
     let position_bounds = array![
@@ -142,10 +141,8 @@ pub fn train<'a>(fitness: &'a ConexFitnessFn,
         [ -1000f64, 1000f64 ], // cooc2_global_term_frequency_boost_per_sentence
         ];
   
-    let iterations = 100;
-
     let mut swarm = pso::Swarm::new(
-       iterations, 
+       num_particles, 
        6,
        position_bounds,
        (-1.0, 2.0),
@@ -160,7 +157,7 @@ pub fn train<'a>(fitness: &'a ConexFitnessFn,
     );
 
     swarm.fly(
-        1000,
+        iterations,
         &pso::HyperParams {
             learning_cognitive: 0.2,
             learning_social: 0.2,

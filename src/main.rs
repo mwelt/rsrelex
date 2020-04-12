@@ -70,8 +70,12 @@ fn main() {
 
     let mut opts = Options::new();
     opts.optflag("s", "soundness", "Test soundness of bin-files.");
-    opts.optopt("t", "train", "Train model parameter with PSO.", "FILE");
+    opts.optopt("t", "train", 
+        "Train model parameter with PSO / MOPSO (--tmopso).", "FILE");
     opts.optopt("", "to", "Training outputfile.", "FILE");
+    opts.optflag("", "tmopso", "Training with mopso.");
+    opts.optopt("", "tnparticles", "Num particles.", "NUM");
+    opts.optopt("", "tniter", "Num iterations.", "NUM");
     opts.optopt("x", "import-xml", "Import xml files from directory.", "DIR");
     opts.optopt("", "xt", "Read specific tag from xml files.", "TAG");
     opts.optopt("", "xl", "Limit the count of documents processed from all xml files.", "LIMIT");
@@ -178,6 +182,21 @@ fn main() {
                 }
                 Some(t) => { t }
             };
+
+            let do_mopso = if matches.opt_present("tmopso") {
+                true
+            } else { false };
+           
+            let num_particles: usize = if matches.opt_present("tnparticles") {
+                matches.opt_str("tnparticles")
+                    .and_then(|l| l.parse().ok()).unwrap_or(100)
+            } else { 100 };
+
+            let iterations: usize = if matches.opt_present("tniter") {
+                matches.opt_str("tniter")
+                    .and_then(|l| l.parse().ok()).unwrap_or(100)
+            } else { 100 };
+
             // let bootstrap_words = vec! [
             //     "Germany",
             //     "Poland",
@@ -205,11 +224,6 @@ fn main() {
                 bootstrap_words.iter().map(|w_nr| env.dict.get_word(w_nr))
                 .collect::<Vec<&str>>());
 
-            let fitness_fn = pso_train::ConexFitnessFn::new(
-                &bootstrap_words,
-                &reference_words,
-                &env 
-            );
 
             if std::path::Path::new(&outfile.clone()).exists() {
                 info!("{} already exists, removing.", outfile);
@@ -217,10 +231,25 @@ fn main() {
                     .expect(&format!("unable to delete {}", outfile));
             }
 
-            info!("starting pso training.");
-            pso_train::train(&fitness_fn, &outfile);
-            // let (f, p) = train_mopso(&fitness_fn, "train_dat/");
-            info!("finished pso training.");
+            if !do_mopso {
+                let fitness_fn = pso_train::ConexFitnessFn::new(
+                    &bootstrap_words,
+                    &reference_words,
+                    &env 
+                );
+                info!("starting mopso training.");
+                pso_train::train(num_particles, iterations, &fitness_fn, &outfile);
+                info!("finished mopso training.");
+            } else {
+                let fitness_fn = mopso_train::ConexFitnessFn::new(
+                    &bootstrap_words,
+                    &reference_words,
+                    &env 
+                );
+                info!("starting pso training.");
+                mopso_train::train(num_particles, iterations, &fitness_fn, &outfile);
+                info!("finished pso training.");
+            }
 
             // info!("final leader:");
             // info!("Position: {:?}, Fitness: {:?}", p, f);

@@ -86,24 +86,27 @@ impl Swarm {
         }];
 
         // initialize personal best fitness with lowest fitness bound
-        ps.slice_mut(s![.., o.pbf])
-            .iter_mut().for_each(|f| *f = fitness_bounds.0);
+        // ps.slice_mut(s![.., o.pbf])
+        //     .iter_mut().for_each(|f| *f = fitness_bounds.0);
 
-            let mut swarm = Swarm {
-                pos_dim, pos_bounds, fitness_bounds, payload_dim, 
-                o,
-                leader: 0,
-                particles: ps
-            };
+        ps.column_mut(o.pbf).iter_mut()
+            .for_each(|f| *f = fitness_bounds.0);
 
-            f(&mut swarm);
+        let mut swarm = Swarm {
+            pos_dim, pos_bounds, fitness_bounds, payload_dim, 
+            o,
+            leader: 0,
+            particles: ps
+        };
 
-            swarm.set_personal_bests();
-            swarm.find_and_set_leader();
+        f(&mut swarm);
 
-            c(0, &mut swarm);
+        swarm.set_personal_bests();
+        swarm.find_and_set_leader();
 
-            swarm
+        c(0, &mut swarm);
+
+        swarm
     }
 
     fn set_personal_bests(&mut self){
@@ -114,7 +117,7 @@ impl Swarm {
             if curr_f >= row[o.pbf] {
                 let row_ = row.slice(s![o.p.0 .. o.p.1 + 1]).into_owned();
 
-                // copy position + fitness to personal best 
+                //TODO: see mopso copy position + fitness to personal best 
                 row.slice_mut(s![o.pb.0 .. o.pb.1 + 1])
                     .iter_mut().enumerate().for_each(|(i, x)| *x = row_[i]);
             }
