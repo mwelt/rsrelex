@@ -209,9 +209,9 @@ pub async fn do_relex<F: AsyncLogger>(
 
             (wpair, patterns)
         }).collect(); 
-    log.log(format!("done finding matches for input wpairs.")).await;
+    log.log("done finding matches for input wpairs.".to_owned()).await;
 
-    log.log(format!("qualifying found matches to patterns.")).await;
+    log.log("qualifying found matches to patterns.".to_owned()).await;
     let mut pattern_cache: HashMap<Vec<WordNr>, Pattern> = HashMap::new();
 
     let mut pattern_count = 0;
@@ -272,7 +272,7 @@ pub async fn do_relex<F: AsyncLogger>(
 
         }
     }
-    log.log(format!("done qualifying found matches to patterns.")).await; 
+    log.log("done qualifying found matches to patterns.".to_owned()).await; 
     log.log(format!("pattern count: {}", pattern_count)).await;
 
     let patterns: Vec<&Pattern> = pattern_cache.values()
@@ -293,9 +293,9 @@ pub async fn do_relex<F: AsyncLogger>(
             let wpairs = find_matches_pattern(&pattern, &env);
             (pattern, wpairs)
         });
-    log.log(format!("done finding new wpairs for surviving patterns.")).await;
+    log.log("done finding new wpairs for surviving patterns.".to_owned()).await;
 
-    log.log(format!("qualifying found wpairs.")).await;
+    log.log("qualifying found wpairs.".to_owned()).await;
     let mut wpair_cache: HashMap<(WordNr, WordNr), WPair> = HashMap::new();
 
     let wpair_word_frequency_boost =
@@ -305,7 +305,7 @@ pub async fn do_relex<F: AsyncLogger>(
 
     let mut wpair_count = 0;
 
-    log.log(format!("qualifying found wpairs")).await;
+    log.log("qualifying found wpairs".to_owned()).await;
 
     for (_pattern, wpairs) in pattern_on_wpairs {
 
@@ -339,7 +339,7 @@ pub async fn do_relex<F: AsyncLogger>(
                     // this can get seriously wrong if the numbers outgrow
                     // i16::MIN, but if this happens our fitness score
                     // is messed up anyways
-                    let mut save_cast = |wn_freq_boost, w| {
+                    let save_cast = |wn_freq_boost, w| {
                         if wn_freq_boost < std::i16::MIN as f32 {
                             warn!("Word frequency boost outmaxed by {}",
                                      env.dict.get_word(w));
@@ -373,7 +373,7 @@ pub async fn do_relex<F: AsyncLogger>(
         }
     }
 
-    log.log(format!("done qualifying found wpairs.")).await; 
+    log.log("done qualifying found wpairs.".to_owned()).await; 
     log.log(format!("wpair count: {}", wpair_count)).await;
 
     let mut wpairs: Vec<&WPair> = wpair_cache.values()
@@ -382,12 +382,12 @@ pub async fn do_relex<F: AsyncLogger>(
     log.log(format!("{} wpairs left after applying threshold fitness of {}.",
              wpairs.len(), WPAIR_SURVIVOR_THRESHOLD)).await;
 
-    log.log(format!("sorting wpairs by fitness.")).await;
+    log.log("sorting wpairs by fitness.".to_owned()).await;
     wpairs.sort_unstable_by(
         |a, b| i16::cmp(&a.fitness, &b.fitness).reverse());
-    log.log(format!("done sorting wpairs by fitness.")).await;
+    log.log("done sorting wpairs by fitness.".to_owned()).await;
 
-    log.log(format!("building a map of w1 to vec w2")).await;
+    log.log("building a map of w1 to vec w2".to_owned()).await;
 
     let mut w1_on_w2s: HashMap<&WordNr, Vec<&WordNr>> = HashMap::new();
     for wpair in wpairs {
@@ -396,7 +396,7 @@ pub async fn do_relex<F: AsyncLogger>(
             .push(&wpair.w2);
     }
 
-    log.log(format!("done building a map of w1 to vec w2")).await;
+    log.log("done building a map of w1 to vec w2".to_owned()).await;
 
     for (w1, w2s) in w1_on_w2s {
         log.log(format!("\"{}\":", env.dict.get_word(w1))).await;

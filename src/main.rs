@@ -26,15 +26,12 @@ mod pso_train_tests;
 mod mopso_train_tests;
 
 use log::{info, error};
-use types::{WordNr, DefaultLogger, CoocInput, soundness_test, Env, DipreInput};
+use types::{WordNr, soundness_test, Env};
 use xml::{read_xml_and_persist_env, PreprocessorFunction};
 use std::env;
-use relex::do_relex;
-// use mopso_train::{ConexFitnessFn, train_mopso, read_word_file}; 
-use conex::{do_conex, cooc_input_to_word_nr_set};
 use std::collections::HashMap;
 use std::collections::HashSet;
-use getopts::Options;
+use getopts::{Matches, Options};
 use rand::seq::SliceRandom;
 
 fn bootstrap(dir: String) -> Env {
@@ -54,10 +51,174 @@ fn bootstrap(dir: String) -> Env {
     env
 }
 
-fn print_usage(program: &str, opts: Options){
+fn print_usage(program: &str, opts: &Options){
     let brief = format!("Usage: {} [options]", program);
     print!("{}", opts.usage(&brief));
 }
+
+
+fn run_xml_import(
+    opts: &Options, 
+    matches: &Matches, 
+    program: &str, 
+    bin_file_dir: String){
+    
+    // do xml import
+    let input_dir = match matches.opt_str("x") {
+        None => { 
+            print_usage(&program, opts);
+            return;
+        }
+        Some(d) => { d }
+    };
+
+    if ! matches.opt_present("xt") {
+        error!("If x option present xt (xml-tag) needs to be present as well!");
+        print_usage(&program, opts);
+        return;
+    }
+
+    let tag = match matches.opt_str("xt") {
+        None => {
+            error!("If x option present xt (xml-tag) needs to be present as well!");
+            print_usage(&program, opts);
+            return;
+        }
+        Some(t) => { t }
+    };
+
+    let limit: Option<usize> = if matches.opt_present("xl") {
+        matches.opt_str("xl").and_then(|l| l.parse().ok()) 
+    } else { Option::None };
+
+    let mut preprocessors: HashMap<String, PreprocessorFunction> = 
+        HashMap::new();
+
+    preprocessors.insert("wikitext::strip_markup".into(), wikitext::strip_markup);
+
+    let preprocessor = if matches.opt_present("xp") {
+        matches.opt_str("xp").and_then(|p| {
+            let p_ = preprocessors.get(&p);
+
+            if p_.is_some() {
+                info!("using preprocessor {}.", p);
+            } else {
+                info!("not using preprocessor.");
+            }
+
+            p_
+        })
+    } else {
+        info!("not using preprocessor.");
+        Option::None
+    };
+
+    read_xml_and_persist_env(
+        &input_dir, 
+        &bin_file_dir, 
+        &tag.as_bytes(), 
+        limit, 
+        preprocessor);
+}
+
+
+fn run_training(
+    opts: &Options, 
+    matches: &Matches, 
+    program: &str, 
+    env: &Env
+    ){
+
+    let reference_file = match matches.opt_str("t") {
+        None => {
+            print_usage(&program, opts);
+            return;
+        }
+        Some(t) => { t }
+    };
+
+    let outfile = match matches.opt_str("to") {
+        None => {
+            "pso_train_swarm.dat".to_string()
+        }
+        Some(t) => { t }
+    };
+
+    let do_mopso = matches.opt_present("tmopso");            
+
+    let num_particles: usize = if matches.opt_present("tnparticles") {
+        matches.opt_str("tnparticles")
+            .and_then(|l| l.parse().ok()).unwrap_or(100)
+    } else { 100 };
+
+    let iterations: usize = if matches.opt_present("tniter") {
+        matches.opt_str("tniter")
+            .and_then(|l| l.parse().ok()).unwrap_or(100)
+    } else { 100 };
+
+    let nbwords: usize = if matches.opt_present("tnbwords") {
+        matches.opt_str("tnbwords")
+            .and_then(|l| l.parse().ok()).unwrap_or(5)
+    } else { 5 };
+
+    let reference_words = pso_train::read_word_file(&reference_file, &env); 
+
+    let mut rng = rand::thread_rng();
+
+    let bootstrap_words: HashSet<WordNr> = reference_words
+        .choose_multiple(&mut rng, nbwords)
+        .cloned().collect();
+
+    info!("Using {} random bootstrap_words: {:?}", nbwords,
+        bootstrap_words.iter().map(|w_nr| env.dict.get_word(w_nr))
+        .collect::<Vec<&str>>());
+
+    if std::path::Path::new(&outfile.clone()).exists() {
+        info!("{} already exists, removing.", outfile);
+        std::fs::remove_file(&outfile)
+            .unwrap_or_else(|_| panic!("unable to delete {}", outfile));
+    }
+
+    if !do_mopso {
+        let fitness_fn = pso_train::ConexFitnessFn::new(
+            &bootstrap_words,
+            &reference_words,
+            env 
+        );
+        info!("starting mopso training.");
+        pso_train::train(num_particles, iterations, &fitness_fn, &outfile);
+        info!("finished mopso training.");
+    } else {
+        let fitness_fn = mopso_train::ConexFitnessFn::new(
+            &bootstrap_words,
+            &reference_words,
+            env 
+        );
+        info!("starting pso training.");
+        mopso_train::train(num_particles, iterations, &fitness_fn, &outfile);
+        info!("finished pso training.");
+    }
+
+    // info!("final leader:");
+    // info!("Position: {:?}, Fitness: {:?}", p, f);
+}
+
+fn run_server(){
+
+    // service::run_server(env).await;    
+
+    // let set = vec! [
+    //     "London",
+    //     "Berlin",
+    //     "Madrid",
+    //     "Lima"
+    // ];
+
+    // info!("{:?}", set);
+    // let json = CoocInput::new(set);
+    // do_conex(&json, &conex::DEFAULT_CONEX_HYPER_PARAMETER, &env);
+}
+
 
 // #[tokio::main]
 // async fn main() {
@@ -74,11 +235,13 @@ fn main() {
         "Train model parameter with PSO / MOPSO (--tmopso).", "FILE");
     opts.optopt("", "to", "Training outputfile.", "FILE");
     opts.optflag("", "tmopso", "Training with mopso.");
-    opts.optopt("", "tnparticles", "Num particles.", "NUM");
-    opts.optopt("", "tniter", "Num iterations.", "NUM");
+    opts.optopt("", "tnparticles", "Num particles. (defaults to 100)", "NUM");
+    opts.optopt("", "tniter", "Num iterations. (defaults to 100)", "NUM");
+    opts.optopt("", "tnbwords", "Num bootstrap words. (defaults to 5)", "NUM");
     opts.optopt("x", "import-xml", "Import xml files from directory.", "DIR");
     opts.optopt("", "xt", "Read specific tag from xml files.", "TAG");
-    opts.optopt("", "xl", "Limit the count of documents processed from all xml files.", "LIMIT");
+    opts.optopt("", "xl", 
+        "Limit the count of documents processed from all xml files.", "LIMIT");
     opts.optopt("", "xp", "Preprocessor function.", "FUNC");
     opts.reqopt("b", "bin-files", 
         "Bin-file directory (if -x is present this directory denotes the
@@ -92,72 +255,14 @@ fn main() {
 
     let bin_file_dir = match matches.opt_str("b") {
         None => { 
-            print_usage(&program, opts);
+            print_usage(&program, &opts);
             return;
         }
         Some(d) => { d }
     };
 
-
     if matches.opt_present("x") {
-        // do xml import
-        let input_dir = match matches.opt_str("x") {
-            None => { 
-                print_usage(&program, opts);
-                return;
-            }
-            Some(d) => { d }
-        };
-
-        if ! matches.opt_present("xt") {
-            error!("If x option present xt (xml-tag) needs to be present as well!");
-            print_usage(&program, opts);
-            return;
-        }
-
-        let tag = match matches.opt_str("xt") {
-            None => {
-                error!("If x option present xt (xml-tag) needs to be present as well!");
-                print_usage(&program, opts);
-                return;
-            }
-            Some(t) => { t }
-        };
-
-        // read_xml_and_persist_env(&input_dir, &bin_file_dir, b"AbstractText", Option::Some(1000));
-        let limit: Option<usize> = if matches.opt_present("xl") {
-            matches.opt_str("xl").and_then(|l| l.parse().ok()) 
-        } else { Option::None };
-
-        let mut preprocessors: HashMap<String, PreprocessorFunction> = 
-            HashMap::new();
-
-        preprocessors.insert("wikitext::strip_markup".into(), wikitext::strip_markup);
-
-        let preprocessor = if matches.opt_present("xp") {
-            matches.opt_str("xp").and_then(|p| {
-                let p_ = preprocessors.get(&p);
-
-                if p_.is_some() {
-                    info!("using preprocessor {}.", p);
-                } else {
-                    info!("not using preprocessor.");
-                }
-
-                p_
-            })
-        } else {
-            info!("not using preprocessor.");
-            Option::None
-        };
-
-       read_xml_and_persist_env(
-           &input_dir, 
-           &bin_file_dir, 
-           &tag.as_bytes(), 
-           limit, 
-           preprocessor);
-
+        run_xml_import(&opts, &matches, &program, bin_file_dir);
     } else {
         let env = bootstrap(bin_file_dir);
 
@@ -168,173 +273,11 @@ fn main() {
         }
 
         if matches.opt_present("t") {
-            let reference_file = match matches.opt_str("t") {
-                None => {
-                    print_usage(&program, opts);
-                    return;
-                }
-                Some(t) => { t }
-            };
-
-            let outfile = match matches.opt_str("to") {
-                None => {
-                    "pso_train_swarm.dat".to_string()
-                }
-                Some(t) => { t }
-            };
-
-            let do_mopso = if matches.opt_present("tmopso") {
-                true
-            } else { false };
-           
-            let num_particles: usize = if matches.opt_present("tnparticles") {
-                matches.opt_str("tnparticles")
-                    .and_then(|l| l.parse().ok()).unwrap_or(100)
-            } else { 100 };
-
-            let iterations: usize = if matches.opt_present("tniter") {
-                matches.opt_str("tniter")
-                    .and_then(|l| l.parse().ok()).unwrap_or(100)
-            } else { 100 };
-
-            // let bootstrap_words = vec! [
-            //     "Germany",
-            //     "Poland",
-            //     "Russia",
-            //     "France",
-            //     "Belgium"
-            //     // "London",
-            //     // "Berlin",
-            //     // "Madrid",
-            //     // "Lima"
-            // ];
-
-            // let json = CoocInput::new(bootstrap_words);
-            // let bootstrap_words = cooc_input_to_word_nr_set(&json, &env); 
-
-            let reference_words = pso_train::read_word_file(&reference_file, &env); 
-
-            let mut rng = rand::thread_rng();
-
-            let bootstrap_words: HashSet<WordNr> = reference_words
-                .choose_multiple(&mut rng, 20)
-                .map(|w_nr| *w_nr).collect();
-
-            info!("Using random bootstrap_words: {:?}",
-                bootstrap_words.iter().map(|w_nr| env.dict.get_word(w_nr))
-                .collect::<Vec<&str>>());
-
-
-            if std::path::Path::new(&outfile.clone()).exists() {
-                info!("{} already exists, removing.", outfile);
-                std::fs::remove_file(&outfile)
-                    .expect(&format!("unable to delete {}", outfile));
-            }
-
-            if !do_mopso {
-                let fitness_fn = pso_train::ConexFitnessFn::new(
-                    &bootstrap_words,
-                    &reference_words,
-                    &env 
-                );
-                info!("starting mopso training.");
-                pso_train::train(num_particles, iterations, &fitness_fn, &outfile);
-                info!("finished mopso training.");
-            } else {
-                let fitness_fn = mopso_train::ConexFitnessFn::new(
-                    &bootstrap_words,
-                    &reference_words,
-                    &env 
-                );
-                info!("starting pso training.");
-                mopso_train::train(num_particles, iterations, &fitness_fn, &outfile);
-                info!("finished pso training.");
-            }
-
-            // info!("final leader:");
-            // info!("Position: {:?}, Fitness: {:?}", p, f);
-
+            run_training(&opts, &matches, &program, &env);
         } else {
-            let set = vec! [
-                "London",
-                "Berlin",
-                "Madrid",
-                "Lima"
-            ];
-
-            info!("{:?}", set);
-            let json = CoocInput::new(set);
-            do_conex(&json, &conex::DEFAULT_CONEX_HYPER_PARAMETER, &env);
+            run_server();
         }
 
-
-        // let wpairs = vec! [
-        //     ("organs", "liver"),
-        //     ("organs", "lung"),
-        //     ("animal", "cat"),
-        //     ("animal", "dog")
-        // ];
-
-        // let json = DipreInput::new(wpairs).serialize();
-        // info!("Json: {}", json);
-        // do_relex(DipreInput::deserialize(&json), &env, DefaultLogger::new()).await;
-       
-
-        // service::run_server(env).await;    
     }
-        
-        // start server
-        // let cooc_input = CoocInput::new(vec![ "SLC1A5",
-        //                                 "CXADR",
-        //                                 "CAV2",
-        //                                 "NUP98",
-        //                                 "CTBP2",
-        //                                 "GSN",
-        //                                 "HSPA1B",
-        //                                 "STOM",
-        //                                 "RAB1B",
-        //                                 "HACD3",
-        //                                 "ITGB6",
-        //                                 "IST1",
-        //                                 "NUCKS1",
-        //                                 "TRIM27",
-        //                                 "APOE",
-        //                                 "SMARCB1",
-        //                                 "UBP1",
-        //                                 "CHMP1A",
-        //                                 "NUP160",
-        //                                 "HSPA8",
-        //                                 "DAG1",
-        //                                 "STAU1",
-        //                                 "ICAM1",
-        //                                 "CHMP5",
-        //                                 "DEK",
-        //                                 "VPS37B",
-        //                                 "EGFR",
-        //                                 "CCNK",
-        //                                 "PPIA",
-        //                                 "IFITM3",
-        //                                 "PPIB",
-        //                                 "TMPRSS2",
-        //                                 "UBC",
-        //                                 "LAMP1",
-        //                                 "CHMP3"]);
-        // conex::do_conex(cooc_input, &env);
-    // }
-
-    // // let wpairs = vec![
-    // //     ("organs", "liver"),
-    // //     ("organs", "lung"),
-    // //     ("bacteria", "Staphylococcus"),
-    // //     ("bacteria", "Streptococcus"),
-    // //     ("organs", "esophagus")
-    // //     // ("cancer", "BRCA1"),
-    // //     // ("cancer", "UV"),
-    // //     // ("cancer", "ultraviolet"),
-    // //     // ("cancer", "alcohol"),
-    // //     // ("cancer", "tobacco"),
-    // // ];
-
-
 
 }
