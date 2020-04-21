@@ -3,7 +3,9 @@ use super::types::{CoocInput, WordNr, CoocFst, CoocSnd, Env};
 use log::{debug, info, warn};
 use std::collections::HashMap;
 use std::collections::HashSet;
+use serde::{Serialize, Deserialize};
 
+#[derive(Serialize, Deserialize, Default)]
 pub struct ConexHyperParameter {
     // how many bootstrap words share this cooc
     cooc1_word_frequency_boost: f64 ,

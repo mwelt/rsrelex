@@ -8,6 +8,7 @@ pub mod pso;
 pub mod mopso;
 pub mod pso_train;
 pub mod mopso_train;
+pub mod utils;
 
 #[macro_use]
 extern crate lazy_static;
@@ -23,14 +24,17 @@ mod pso_tests;
 #[cfg(test)]
 mod pso_train_tests;
 #[cfg(test)]
-mod mopso_train_tests;
+mod utils_tests;
 
+use serde::{Serialize, Deserialize};
+use toml;
 use log::{info, error};
 use types::{WordNr, soundness_test, Env};
 use xml::{read_xml_and_persist_env, PreprocessorFunction};
 use std::env;
 use std::collections::HashMap;
 use std::collections::HashSet;
+use std::fs::read_to_string;
 use getopts::{Matches, Options};
 use rand::seq::SliceRandom;
 
@@ -161,7 +165,7 @@ fn run_training(
             .and_then(|l| l.parse().ok()).unwrap_or(5)
     } else { 5 };
 
-    let reference_words = pso_train::read_word_file(&reference_file, &env); 
+    let reference_words = utils::read_word_file(&reference_file, &env); 
 
     let mut rng = rand::thread_rng();
 
@@ -219,6 +223,63 @@ fn run_server(){
     // do_conex(&json, &conex::DEFAULT_CONEX_HYPER_PARAMETER, &env);
 }
 
+fn run_relex(
+    opts: &Options, 
+    matches: &Matches, 
+    program: &str, 
+    env: &Env
+    ){
+
+    // let config_file = match matches.opt_str("c") {
+    //     None => {
+    //         print_usage(&program, opts);
+    //         return;
+    //     }
+    //     Some(t) => { t }
+    // };
+
+   
+    // let config: ConexConfig = 
+    //     toml::from_str(&read_to_string(&config_file)
+    //     .unwrap_or_else(|_| panic!("Unable to open file \"{}\".", &config_file)))
+    //     .unwrap_or_else(|_| panic!("Unable to open file \"{}\".", &config_file));
+
+    // conex::do_conex(&types::CoocInput{ set: config.seed_terms }, 
+    //     &config.hyper_parameter, 
+    //     env);
+}
+
+#[derive(Serialize, Deserialize, Default)]
+struct ConexConfig {
+    hyper_parameter: conex::ConexHyperParameter,
+    seed_terms: Vec<String>
+}
+
+fn run_celex(
+    opts: &Options, 
+    matches: &Matches, 
+    program: &str, 
+    env: &Env
+    ){
+
+    let config_file = match matches.opt_str("c") {
+        None => {
+            print_usage(&program, opts);
+            return;
+        }
+        Some(t) => { t }
+    };
+
+   
+    let config: ConexConfig = 
+        toml::from_str(&read_to_string(&config_file)
+        .unwrap_or_else(|_| panic!("Unable to open file \"{}\".", &config_file)))
+        .unwrap_or_else(|_| panic!("Unable to open file \"{}\".", &config_file));
+
+    conex::do_conex(&types::CoocInput{ set: config.seed_terms }, 
+        &config.hyper_parameter, 
+        env);
+}
 
 // #[tokio::main]
 // async fn main() {
@@ -231,6 +292,9 @@ fn main() {
 
     let mut opts = Options::new();
     opts.optflag("s", "soundness", "Test soundness of bin-files.");
+    opts.optopt("d", "deamon", "Starts REST Server backend.", "PORT");
+    opts.optopt("r", "relex", "Starts RELEX with specified input.", "FILE");
+    opts.optopt("c", "celex", "Starts CELEX with specified input.", "FILE");
     opts.optopt("t", "train", 
         "Train model parameter with PSO / MOPSO (--tmopso).", "FILE");
     opts.optopt("", "to", "Training outputfile.", "FILE");
@@ -270,14 +334,16 @@ fn main() {
             info!("Starting soundness test.");
             soundness_test(&env);
             info!("Done soundness test.");
-        }
-
-        if matches.opt_present("t") {
+    
+        } else if matches.opt_present("r") {
+            run_relex(&opts, &matches, &program, &env);
+        } else if matches.opt_present("c") {
+            run_celex(&opts, &matches, &program, &env);
+        } else if matches.opt_present("t") {
             run_training(&opts, &matches, &program, &env);
-        } else {
+        } else if matches.opt_present("") {
             run_server();
         }
-
     }
 
 }

@@ -22,3 +22,4 @@ rand = "^0"
 assert_approx_eq = "^1"
 ndarray = { version = "^0", features = ["rayon"] }
 rayon = "^1"
+toml = "^0"

@@ -17,6 +17,6 @@ fn test_read_reference() {
     let reference = "countries.txt";
     let env = bootstrap("test_bin".to_string()); 
 
-    let word_nrs = pso_train::read_word_file(&reference, &env);
+    let word_nrs = utils::read_word_file(&reference, &env);
     word_nrs.iter().for_each(|w_nr| println!("{}", w_nr));
 }
