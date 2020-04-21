@@ -96,7 +96,7 @@ fn process_xml_file(
             Ok(Event::Start(ref e)) => {
                 if tag == e.name() {
                     count+=1;
-                    if count % 100000 == 0 {
+                    if count % 1000000 == 0 {
                         info!("count: {}", count);
                     }
                     if limit.is_some() && count >= limit.unwrap() {
