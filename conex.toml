@@ -1,0 +1,22 @@
+[hyper_parameter]
+cooc1_word_frequency_boost = f64 
+# // how frequent is this cooc overall w.r.t bootstrap set
+cooc1_set_frequency_boost = f64 
+# // overall termfrequency i.e. how many sentences contain this term
+# //  COOC1_GLOBAL_TERM_FREQUENCY_BOOST_PER_SENTENCE = f32 
+cooc1_global_term_frequency_boost_per_sentence = f64
+
+cooc1_survivor_threshold = f64 
+
+# // how many cooc1 do cooccurr with that cooc2?
+cooc2_cooc1_frequency_boost = f64 
+
+# // how frequent is this cooc2 in the whole cooc1 set
+cooc2_set_frequency_boost = f64 
+
+# // overall termfrequency i.e. how many sentences contain this term
+cooc2_global_term_frequency_boost_per_sentence = f64 
+
+cooc2_survivor_threshold = f64 
+
+[seed_terms]
