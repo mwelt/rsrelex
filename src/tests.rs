@@ -1,3 +1,15 @@
+use super::*;
+
+#[test]
+fn test_conex_config() {
+    let config_file = "conex.toml";
+
+    let config: ConexConfig = 
+        toml::from_str(&read_to_string(config_file)
+            .unwrap_or_else(|_| panic!("Unable to open file \"{}\".", config_file)))
+        .unwrap();
+}
+
 
 // type Closure = dyn Fn(&Vec<usize>) -> Vec<usize>;
 

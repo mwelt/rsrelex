@@ -5,7 +5,7 @@ use std::collections::HashMap;
 use std::collections::HashSet;
 use serde::{Serialize, Deserialize};
 
-#[derive(Serialize, Deserialize, Default)]
+#[derive(Serialize, Deserialize, Default, Debug)]
 pub struct ConexHyperParameter {
     // how many bootstrap words share this cooc
     cooc1_word_frequency_boost: f64 ,
@@ -193,6 +193,10 @@ pub fn do_conex_(
 
     // debug!("wpair_word_frequency_boost = {}", wpair_word_frequency_boost);
 
+    debug!("Starting CONEX with following parameters:");
+    debug!("Hyperparameter: {:?}", hyper_params);
+    debug!("Seed terms: {:?}", bootstrap_set.iter()
+        .map(|w_nr| env.dict.get_word(w_nr)).collect::<Vec<&str>>());
     let mut coocs_on_cooc_fst: HashMap<WordNr, CoocFst> = HashMap::new(); 
 
     debug!("Collecting syntagmatic context");

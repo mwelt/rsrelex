@@ -190,8 +190,20 @@ fn run_training(
             env 
         );
         info!("starting mopso training.");
-        pso_train::train(num_particles, iterations, &fitness_fn, &outfile);
+        let winner_hyper_params = 
+            pso_train::train(num_particles, iterations, &fitness_fn, &outfile);
         info!("finished mopso training.");
+
+        info!("Winner Configuration: {:?}", winner_hyper_params);
+        let final_run_result = conex::do_conex(&types::CoocInput { 
+            set: bootstrap_words.iter()
+                .map(|w_nr| env.dict.get_word(w_nr).to_owned())
+                .collect()
+        }, &winner_hyper_params, env);
+
+        info!("Winner Result: {:?}", final_run_result.iter()
+            .map(|w_nr| env.dict.get_word(w_nr)).collect::<Vec<&str>>());
+
     } else {
         let fitness_fn = mopso_train::ConexFitnessFn::new(
             &bootstrap_words,
@@ -255,7 +267,7 @@ struct ConexConfig {
     seed_terms: Vec<String>
 }
 
-fn run_celex(
+fn run_conex(
     opts: &Options, 
     matches: &Matches, 
     program: &str, 
@@ -274,11 +286,14 @@ fn run_celex(
     let config: ConexConfig = 
         toml::from_str(&read_to_string(&config_file)
         .unwrap_or_else(|_| panic!("Unable to open file \"{}\".", &config_file)))
-        .unwrap_or_else(|_| panic!("Unable to open file \"{}\".", &config_file));
+        .unwrap_or_else(|_| panic!("Unable to read file \"{}\".", &config_file));
 
-    conex::do_conex(&types::CoocInput{ set: config.seed_terms }, 
+    let result_words = conex::do_conex(&types::CoocInput{ set: config.seed_terms }, 
         &config.hyper_parameter, 
         env);
+
+    println!("{:?}", result_words.iter()
+        .map(|w_nr| env.dict.get_word(w_nr)).collect::<Vec<&str>>());
 }
 
 // #[tokio::main]
@@ -294,7 +309,7 @@ fn main() {
     opts.optflag("s", "soundness", "Test soundness of bin-files.");
     opts.optopt("d", "deamon", "Starts REST Server backend.", "PORT");
     opts.optopt("r", "relex", "Starts RELEX with specified input.", "FILE");
-    opts.optopt("c", "celex", "Starts CELEX with specified input.", "FILE");
+    opts.optopt("c", "conex", "Starts CONEX with specified input.", "FILE");
     opts.optopt("t", "train", 
         "Train model parameter with PSO / MOPSO (--tmopso).", "FILE");
     opts.optopt("", "to", "Training outputfile.", "FILE");
@@ -338,7 +353,7 @@ fn main() {
         } else if matches.opt_present("r") {
             run_relex(&opts, &matches, &program, &env);
         } else if matches.opt_present("c") {
-            run_celex(&opts, &matches, &program, &env);
+            run_conex(&opts, &matches, &program, &env);
         } else if matches.opt_present("t") {
             run_training(&opts, &matches, &program, &env);
         } else if matches.opt_present("") {

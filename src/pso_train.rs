@@ -83,7 +83,8 @@ impl ConexFitnessFn<'_> {
                     calc_precision_recall(&conex_res, self.reference_words);
 
                 // write fitness fn
-                p[o.f] = (precision + recall).abs() / 2.0 - (precision - recall).abs() / 3.0;
+                p[o.f] = 2.0 * ((precision * recall) / (precision + recall));
+
                 // write precision and recall
                 p[o.l.0] = precision;
                 p[o.l.0+1] = recall;
@@ -96,7 +97,7 @@ pub fn train<'a>(
     num_particles: usize, 
     iterations: usize, 
     fitness: &'a ConexFitnessFn,
-    out_file: &'a str){
+    out_file: &'a str) -> conex::ConexHyperParameter {
 
     let position_bounds = array![
         [ -100f64, 100f64 ], // cooc1_word_frequency_boost
@@ -136,4 +137,7 @@ pub fn train<'a>(
             info!("{} of {}", _i, iterations);
             append_swarm_to_file(swarm, out_file);
         });
+
+    let leader_pos = swarm.particles.slice(s![swarm.leader, swarm.o.p.0..swarm.o.p.1]);
+    conex::ConexHyperParameter::from_vector(leader_pos.to_vec(), 0f64)
 }

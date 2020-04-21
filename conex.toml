@@ -1,22 +1,43 @@
+seed_terms = ["Portugal", "Italy", "Chad", "Tunisia", "Cambodia", "Canada", "Iraq", "Morocco", "Germany", "Japan", "Mali", "Brazil", "Libya", "Cyprus", "Greece", "Chile", "Macedonia", "Antarctica", "Argentina", "Syria"] 
+
+# ["Argentina", "Algeria", "Belgium", "Ireland", "Greece", "Venezuela",
+# "India", "Jersey", "Niger", "Libya", "Chile", "Ukraine", "Norway",
+# "France", "Mali", "Malta", "Brazil", "Sudan", "Australia", "Italy"]
+
+# [
+# "Minneapolis",
+# "Jaipur",
+# "Taiyuan",
+# "Frankfurt",
+# "Qingdao",
+# "Surabaya",
+# "Lisbon",
+# "Tampa",
+# "Jinan",
+# "Fukuoka",
+# "Campinas",
+# "Denver",
+# "Kaohsiung",
+# "Quezon City",
+# "Katowice",
+# "Aleppo",
+# "Durban",
+# "Kyiv",
+# "Lucknow",
+# "Giza",
+# "Zhengzhou",
+# "Taichung",
+# "Brooklyn"
+# ]
+
 [hyper_parameter]
-cooc1_word_frequency_boost = f64 
-# // how frequent is this cooc overall w.r.t bootstrap set
-cooc1_set_frequency_boost = f64 
-# // overall termfrequency i.e. how many sentences contain this term
-# //  COOC1_GLOBAL_TERM_FREQUENCY_BOOST_PER_SENTENCE = f32 
-cooc1_global_term_frequency_boost_per_sentence = f64
 
-cooc1_survivor_threshold = f64 
+cooc1_word_frequency_boost = -13.0 
+cooc1_set_frequency_boost = 23.0 
+cooc1_global_term_frequency_boost_per_sentence = -15.0 
+cooc1_survivor_threshold = 0.0 
 
-# // how many cooc1 do cooccurr with that cooc2?
-cooc2_cooc1_frequency_boost = f64 
-
-# // how frequent is this cooc2 in the whole cooc1 set
-cooc2_set_frequency_boost = f64 
-
-# // overall termfrequency i.e. how many sentences contain this term
-cooc2_global_term_frequency_boost_per_sentence = f64 
-
-cooc2_survivor_threshold = f64 
-
-[seed_terms]
+cooc2_cooc1_frequency_boost = 15.0 
+cooc2_set_frequency_boost = 13.0 
+cooc2_global_term_frequency_boost_per_sentence = -40.0 
+cooc2_survivor_threshold = 0.0 
