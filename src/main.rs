@@ -53,13 +53,13 @@ fn bootstrap(dir: String) -> Env {
         .expect("\"the\" not found in dictionary.");
 
     env
+
 }
 
 fn print_usage(program: &str, opts: &Options){
     let brief = format!("Usage: {} [options]", program);
     print!("{}", opts.usage(&brief));
 }
-
 
 fn run_xml_import(
     opts: &Options, 
@@ -189,10 +189,10 @@ fn run_training(
             &reference_words,
             env 
         );
-        info!("starting mopso training.");
+        info!("starting pso training.");
         let winner_hyper_params = 
             pso_train::train(num_particles, iterations, &fitness_fn, &outfile);
-        info!("finished mopso training.");
+        info!("finished pso training.");
 
         info!("Winner Configuration: {:?}", winner_hyper_params);
         let final_run_result = conex::do_conex(&types::CoocInput { 
@@ -210,9 +210,9 @@ fn run_training(
             &reference_words,
             env 
         );
-        info!("starting pso training.");
+        info!("starting mopso training.");
         mopso_train::train(num_particles, iterations, &fitness_fn, &outfile);
-        info!("finished pso training.");
+        info!("finished mopso training.");
     }
 
     // info!("final leader:");
