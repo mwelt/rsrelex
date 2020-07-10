@@ -1,0 +1,29 @@
+# precsion recall F_1
+
+set xlabel "precision"
+set ylabel "recall"
+set zlabel "F_1"
+
+plot [-0.1:1.1] [-0.1:1.1] [0:0.6] inputfile using 21:22:7
+
+# precsion recall all particles 
+
+set zlabel "recall"
+set ylabel "precision"
+set xlabel "particle"
+splot [0:50] [0:1] [0:1] inputfile every 1:1:1::50 using :21:22
+
+# movement 1st 3 hyper-parameter
+
+set xlabel "hp1"
+set ylabel "hp2"
+set zlabel "hp3"
+
+splot [-100:100] [-100:100] [-1000:1000] inputfile every 1:1:1::50 using 1:2:3
+
+# movement of n particles in first 3 hyper-parameter
+
+splot [-100:100] [-100:100] [-1000:1000] 
+inputfile every 1:1:1::1 using 1:2:3, 
+inputfile every ::2::2 using 1:2:3, 
+inputfile every ::12::12 using 1:2:3

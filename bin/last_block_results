@@ -1,0 +1,1 @@
+tail -n52 pso_f1_wp_10k_100_50_5.dat | head -n 50 | awk '{print NR,,,}' | sort -k2 -n
