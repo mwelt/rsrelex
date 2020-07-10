@@ -21,7 +21,7 @@ run_train() {
   )
 }
 
-for i in $(seq 1 10) 
+for i in $(seq 11 100) 
 do
   run_train $i 
 done
