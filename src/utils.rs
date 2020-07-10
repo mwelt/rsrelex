@@ -1,7 +1,7 @@
 use super::*;
 use super::types::{Env};
 use std::fs::File;
-use std::io::{BufRead, BufReader, Result};
+use std::io::{self, BufRead, BufReader, Result};
 use log::debug;
 
 pub fn read_word_file(file_name: &str, env: &Env) -> Vec<WordNr> {
@@ -27,6 +27,24 @@ pub fn read_word_file(file_name: &str, env: &Env) -> Vec<WordNr> {
     let x: usize = word_nrs.len() + count_missing;
     info!("{} from {} known words found in word file \"{}\".", 
         word_nrs.len(), x, file_name);
+
+    word_nrs
+}
+
+pub fn read_words_from_stdin(env: &Env) -> Vec<WordNr> {
+
+    let lines: Vec<String> = std::io::stdin().lock().lines()
+        .collect::<Result<Vec<String>>>()
+        .unwrap_or_else(|_| panic!("Unable to read from stdin."));
+
+    let word_nrs: Vec<WordNr> = lines.iter()
+        .filter_map(|s| {
+            let o_wnr = env.dict.get_opt_nr(s);
+            if o_wnr.is_none() {
+                panic!("{} not found in dictionary. Aborting.", s); 
+            }
+            o_wnr
+        }).collect();
 
     word_nrs
 }

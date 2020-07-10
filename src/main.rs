@@ -35,8 +35,10 @@ use std::env;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::fs::read_to_string;
+use std::io::{self, BufRead};
 use getopts::{Matches, Options};
 use rand::seq::SliceRandom;
+use atty::Stream;
 
 fn bootstrap(dir: String) -> Env {
     info!("bootstraping.");
@@ -125,7 +127,6 @@ fn run_xml_import(
         preprocessor);
 }
 
-
 fn run_training(
     opts: &Options, 
     matches: &Matches, 
@@ -167,15 +168,33 @@ fn run_training(
 
     let reference_words = utils::read_word_file(&reference_file, &env); 
 
-    let mut rng = rand::thread_rng();
+    // check if run from a pipe
+    let bootstrap_words: HashSet<WordNr> = 
+        // if no pipe, randomize tnbwords from the referenece_words
+        if atty::is(Stream::Stdin) {
 
-    let bootstrap_words: HashSet<WordNr> = reference_words
-        .choose_multiple(&mut rng, nbwords)
-        .cloned().collect();
+            let mut rng = rand::thread_rng();
 
-    info!("Using {} random bootstrap_words: {:?}", nbwords,
-        bootstrap_words.iter().map(|w_nr| env.dict.get_word(w_nr))
-        .collect::<Vec<&str>>());
+            let bootstrap_words: HashSet<WordNr> = reference_words
+                .choose_multiple(&mut rng, nbwords)
+                .cloned().collect();
+
+            info!("Using {} random bootstrap_words: {:?}", nbwords,
+                bootstrap_words.iter().map(|w_nr| env.dict.get_word(w_nr))
+                .collect::<Vec<&str>>());
+
+            bootstrap_words
+        }
+        // else read a wordlist from stdin
+        else{
+
+            let bootstrap_words: HashSet<WordNr> = utils::read_words_from_stdin(&env)
+                .iter().cloned().collect();
+
+            info!("Using bootstrap words from stdin. --tnbwords option is ignored!"); 
+
+            bootstrap_words
+        };
 
     if std::path::Path::new(&outfile.clone()).exists() {
         info!("{} already exists, removing.", outfile);
