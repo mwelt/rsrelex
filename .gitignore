@@ -8,3 +8,6 @@ data3/
 *.bin
 /data.out
 /sync.sh
+/plot/out
+/dat
+/results
