@@ -1,7 +1,9 @@
 clear
 reset
 
-inputfile =  "dat/pso_f1_wp_10k_100_50_5_fix_batch/44.dat"
+set datafile separator "|"
+
+input = '< sqlite3 dat/dat.db "select pos4, pos5, pos6 from dat where batch_id=2 and irun=42;"'
 
 set terminal pngcairo size 1024, 768 enhanced font 'Verdana,10'
 
@@ -11,5 +13,5 @@ set xlabel "hp4"
 set ylabel "hp5"
 set zlabel "hp6"
 
-splot [-100:100] [-100:100] [-1000:1000] inputfile every 1:1:1::50 using 4:5:6 t ''
+splot [-100:100] [-100:100] [-1000:1000] input using 1:2:3 t ''
 

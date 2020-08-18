@@ -6,7 +6,7 @@ set datafile separator "|"
 
 set terminal pngcairo size 1024, 768 enhanced font 'Verdana,10'
 
-set output "plot/out/baseline/results_sql.png"
+set output "plot/out/baseline/results.png"
 
 set xlabel "no. run"
 set ylabel "F_1"
