@@ -4,7 +4,7 @@ use ndarray::parallel::prelude::*;
 use std::io::Write;
 use std::fs::OpenOptions;
 
-fn append_swarm_to_file(s: &mopso::Swarm, f: &str){
+fn append_swarm_to_file(i: usize, s: &mopso::Swarm, f: &str){
 
    let mut file = OpenOptions::new()
        .create(true)
@@ -12,18 +12,20 @@ fn append_swarm_to_file(s: &mopso::Swarm, f: &str){
        .open(f)
        .unwrap_or_else(|_| panic!("Unable to open {}.", f));
 
-    s.particles.axis_iter(Axis(0)).for_each(|p|
-        writeln!(file, "{}", 
-            p.iter()
-            .map(|x| x.to_string())
-            .collect::<Vec<String>>()
-            .join("\t")).unwrap());
+    // do not write particles
+    // only write current pareto front
+    //s.particles.axis_iter(Axis(0)).for_each(|p|
+    //    writeln!(file, "{}", 
+    //        p.iter()
+    //        .map(|x| x.to_string())
+    //        .collect::<Vec<String>>()
+    //        .join("\t")).unwrap());
 
-    //write new line to seperate leaders
-    writeln!(file, "\n").unwrap();
+    ////write new line to seperate leaders
+    //writeln!(file, "\n").unwrap();
 
     s.leaders.axis_iter(Axis(0)).for_each(|l| 
-        writeln!(file, "{}",
+        writeln!(file, "{}\t{}",i,
             l.iter()
             .map(|x| x.to_string())
             .collect::<Vec<String>>()
@@ -105,7 +107,7 @@ pub fn train<'a>(
        },
        &|_i: usize, swarm: &mut mopso::Swarm| {
            info!("{} of {}", _i, iterations);
-           append_swarm_to_file(swarm, out_file);
+           append_swarm_to_file(_i, swarm, out_file);
        }
     );
 
@@ -121,6 +123,6 @@ pub fn train<'a>(
         },
         &|_i: usize, swarm: &mut mopso::Swarm| {
             info!("{} of {}", _i, iterations);
-            append_swarm_to_file(swarm, out_file);
+            append_swarm_to_file(_i, swarm, out_file);
         });
 }

@@ -1,7 +1,7 @@
 #! /usr/bin/env sh
 
 INPUT_FILE=countries.txt
-OUTPUT_DIR=pso_f1_wp_10k_100_50_11_batch
+OUTPUT_DIR=mopso_f1_wp_10k_100_50_5_batch
 
 NITER=100
 NPARTICLES=50
@@ -21,9 +21,10 @@ run_train() {
   #   --tnbwords $NBWORDS 
   # )
 
-  $(cat countries_seed.txt | tail -n8 | env RUST_LOG=info \
+  $(cat countries_seed.txt | tail -n5 | env RUST_LOG=info \
     ./target/release/rsrelex \
     --train $INPUT_FILE \
+    --tmopso \
     --to $OUTPUT_DIR/$1.dat \
     -b ~/data/wikipedia/bin_10k/ \
     --tniter $NITER \
