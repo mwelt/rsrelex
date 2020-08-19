@@ -1,7 +1,7 @@
 #! /usr/bin/env sh
 
 INPUT_FILE=countries.txt
-OUTPUT_DIR=mopso_f1_wp_10k_100_50_5_batch
+OUTPUT_DIR=dat/mopso_f1_wp_10k_100_50_5_batch
 
 NITER=100
 NPARTICLES=50
