@@ -18,8 +18,7 @@ VALUES" > t.sql
     | sed 's/NaN/0/g' \
     | awk -v batch_id=$BATCH_ID -v run=$RUN \
     '{
-      if ((NR-1)%50==0) cycle++; 
-      print "("batch_id", " run", " cycle-1", " (NR-1)%50", " $1", " $2", " $3", " $4", " $5", " $6", " $7", " $21", " $22")"
+      print "("batch_id", " run", " $1", -1," $2", " $3", " $4", " $5", " $6", " $7", -1, " $8", " $9")"
     }'\
     | sed '$!s/$/,/;$a\;' >> t.sql
 
